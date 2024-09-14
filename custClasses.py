@@ -2,6 +2,7 @@
 # this is a custom class with length and width
 # now we can initialize it with 10, 20
 # so whenevner we have to iterate over it we can get length first 
+
 class Rectangle:
     def __init__(self, length, width) -> None:
         self.length = length
