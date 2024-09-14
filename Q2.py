@@ -41,7 +41,7 @@ def create_order(request):
 
     return render(request, 'order_success.html')
 
-
+# CONCLUDING
 # threading.get_ident() function returns the thread ID in which the code is currently running. 
 # In this case, the thread ID for the view and all signal handlers is the same, 
 # indicating that all the signal handlers are running in the same thread as the view that triggered the signal.

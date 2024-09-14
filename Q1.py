@@ -51,8 +51,9 @@ def create_order(request):
     return render(request, 'order_success.html')
 
 
-# When the create_order view is called the following sequence will get executed
 
+# When the create_order view is called the following sequence will get executed
+# CONCLUDING    
 # The signal will trigger the send_confirmation_email function first, which waits for 3 seconds.
 # After the email is "sent," the signal will trigger the update_inventory function, which waits for 2 seconds.
 # Finally, the signal will trigger the log_order function, which waits for 1 second.
