@@ -18,6 +18,7 @@ from django.db import models
 from django.db.models.signals import post_save
 from django.dispatch import receiver
 import time
+from django.shortcuts import render
 
 class Order(models.Model):
     product = models.CharField(max_length=100)
@@ -47,8 +48,6 @@ def log_order(sender, instance, **kwargs):
     print(f"Order for {instance.product} logged.")
 
 # creating the order
-from django.shortcuts import render
-from .models import Order
 
 def create_order(request):
     # Simulating order creation

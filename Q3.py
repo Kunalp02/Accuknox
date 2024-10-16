@@ -22,6 +22,8 @@ from django.db import models, transaction
 from django.db.models.signals import post_save
 from django.dispatch import receiver
 import threading
+from django.shortcuts import render
+from django.db import transaction
 
 class Customer(models.Model):
     name = models.CharField(max_length=100)
@@ -39,12 +41,6 @@ def update_customer_balance(sender, instance, **kwargs):
     customer.balance += instance.amount
     print(f"[Signal Handler] Updating customer balance to {customer.balance} (Thread ID: {threading.get_ident()})")
     customer.save()
-
-
-from django.shortcuts import render
-from .models import Payment, Customer
-from django.db import transaction
-import threading
 
 def make_payment(request):
     customer = Customer.objects.first()
