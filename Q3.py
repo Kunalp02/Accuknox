@@ -16,7 +16,7 @@
 
 # CONCLUSION
 # lastly the balance does not get updataed when the transcation gets failed 
-# this proves that django signals runs in the same database as the caller by default
+# this proves that django signals runs in the same database as the caller by default, unless explicitly handled with transaction.on_commit()
 
 from django.db import models, transaction
 from django.db.models.signals import post_save
