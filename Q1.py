@@ -5,6 +5,15 @@
 # that conclusively proves your stance. The code does not need to be 
 # elegant and production ready, we just need to understand your logic.
 
+# When the create_order view is called the following sequence will get executed
+
+# CONCLUSION
+# The signal will trigger the send_confirmation_email function first, which waits for 3 seconds.
+# After the email is "sent," the signal will trigger the update_inventory function, which waits for 2 seconds.
+# Finally, the signal will trigger the log_order function, which waits for 1 second.
+# All of these tasks will block the response from being sent to the user. 
+# The response to the user will only be sent after 6 seconds (3s + 2s + 1s) because all the django signals are executed synchronously by default.
+
 from django.db import models
 from django.db.models.signals import post_save
 from django.dispatch import receiver
@@ -16,7 +25,7 @@ class Order(models.Model):
     customer_email = models.EmailField()
     created_at = models.DateTimeField(auto_now_add=True)
 
-# send confirmation email
+# sending confirmation email
 @receiver(post_save, sender=Order)
 def send_confirmation_email(sender, instance, **kwargs):
     print("Sending confirmation email...")
@@ -52,10 +61,3 @@ def create_order(request):
 
 
 
-# When the create_order view is called the following sequence will get executed
-# CONCLUDING    
-# The signal will trigger the send_confirmation_email function first, which waits for 3 seconds.
-# After the email is "sent," the signal will trigger the update_inventory function, which waits for 2 seconds.
-# Finally, the signal will trigger the log_order function, which waits for 1 second.
-# All of these tasks will block the response from being sent to the user. 
-# The response to the user will only be sent after 6 seconds (3s + 2s + 1s) because all the signals are executed synchronously.

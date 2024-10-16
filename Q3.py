@@ -8,6 +8,16 @@
 # If the transaction fails , both the payment and the balance update should be rolled back.
 
 
+# expected output
+# [View] Making Payment... (Thread ID: 140694028969728)
+# [Signal Handler] Updating customer balance to 100.00 (Thread ID: 140694028969728)
+# [View] Simulated failure after payment creation!
+# [View] Customer balance after transaction: 0.00
+
+# CONCLUSION
+# lastly the balance does not get updataed when the transcation gets failed 
+# this proves that django signals runs in the same database as the caller by default
+
 from django.db import models, transaction
 from django.db.models.signals import post_save
 from django.dispatch import receiver
@@ -61,14 +71,3 @@ def make_payment(request):
 
     return render(request, 'payment_result.html')
 
-# expected output
-# [View] Making Payment... (Thread ID: 140694028969728)
-# [Signal Handler] Updating customer balance to 100.00 (Thread ID: 140694028969728)
-# [View] Simulated failure after payment creation!
-# [View] Customer balance after transaction: 0.00
-
-
-
-# CONCLUDING
-# lastly the balance does not get updataed when the transcation gets failed 
-# this proves that django signals runs in the same database as the caller by default
