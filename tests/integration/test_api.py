@@ -1,3 +1,5 @@
+import uuid
+
 import pytest
 from httpx import AsyncClient
 
@@ -11,10 +13,11 @@ async def test_health(client: AsyncClient):
 
 @pytest.mark.asyncio
 async def test_signup_and_me(client: AsyncClient):
+    email = f"signup-{uuid.uuid4().hex[:8]}@example.com"
     res = await client.post(
         "/v1/auth/signup",
         json={
-            "email": "signup-test@example.com",
+            "email": email,
             "password": "password123",
             "org_name": "Signup Org",
         },
@@ -24,7 +27,7 @@ async def test_signup_and_me(client: AsyncClient):
 
     me = await client.get("/v1/auth/me", headers={"Authorization": f"Bearer {token}"})
     assert me.status_code == 200
-    assert me.json()["email"] == "signup-test@example.com"
+    assert me.json()["email"] == email
 
 
 @pytest.mark.asyncio

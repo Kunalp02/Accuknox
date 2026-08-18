@@ -55,7 +55,7 @@ jobs:
         run: uv run ruff check packages apps tests --select F,I
 
       - name: Integration tests
-        run: uv run pytest tests/ -v
+        run: uv run pytest tests/ -v --asyncio-mode=auto
 
   frontend:
     runs-on: ubuntu-latest

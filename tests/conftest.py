@@ -1,10 +1,10 @@
+import asyncio
 import os
 import uuid
 
 import pytest
 from httpx import ASGITransport, AsyncClient
 
-# Test env defaults before app import
 os.environ.setdefault(
     "DATABASE_URL",
     "postgresql+asyncpg://orchestrator:orchestrator@localhost:5432/orchestrator",
@@ -16,11 +16,21 @@ os.environ.setdefault("ENCRYPTION_KEY", "test-encryption-key-32-bytes!!")
 from orchestrator_api.main import app
 
 
+@pytest.fixture(scope="session")
+def event_loop():
+    loop = asyncio.new_event_loop()
+    yield loop
+    loop.close()
+
+
 @pytest.fixture
 async def client():
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://test") as ac:
         yield ac
+    from orchestrator_core.database import engine
+
+    await engine.dispose()
 
 
 @pytest.fixture
