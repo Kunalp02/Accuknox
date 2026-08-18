@@ -97,6 +97,11 @@ export const api = {
     request<Workflow>(`/v1/workflows/${id}`, { method: "PATCH", body: JSON.stringify(data) }),
   publishWorkflow: (id: string) =>
     request<Workflow>(`/v1/workflows/${id}/publish`, { method: "POST" }),
+  validateWorkflow: (id: string) =>
+    request<{ valid: boolean; errors: string[]; warnings: string[] }>(
+      `/v1/workflows/${id}/validate`,
+      { method: "POST" }
+    ),
   invokeWorkflow: (id: string, input: string) =>
     request<{ run_id: string; status: string }>(`/v1/workflows/${id}/invoke`, {
       method: "POST",

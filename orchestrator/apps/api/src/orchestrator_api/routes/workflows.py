@@ -194,6 +194,13 @@ async def publish_workflow(
     wf = result.scalar_one_or_none()
     if not wf:
         raise HTTPException(status_code=404, detail="Workflow not found")
+
+    from orchestrator_runtime.validate import validate_workflow_graph
+
+    check = validate_workflow_graph(wf.graph or {})
+    if not check["valid"]:
+        raise HTTPException(status_code=400, detail={"message": "Workflow validation failed", **check})
+
     wf.is_published = True
     wf.version += 1
     wf.updated_at = datetime.now(timezone.utc)
@@ -217,3 +224,22 @@ async def delete_workflow(
         raise HTTPException(status_code=404, detail="Workflow not found")
     await session.delete(wf)
     await session.commit()
+
+
+@router.post("/{workflow_id}/validate")
+async def validate_workflow(
+    workflow_id: uuid.UUID,
+    auth: AuthContext = Depends(get_auth_context),
+    session: AsyncSession = Depends(get_session),
+):
+    _check(auth, "workflow:read")
+    result = await session.execute(
+        select(Workflow).where(Workflow.id == workflow_id, Workflow.organization_id == auth.org_id)
+    )
+    wf = result.scalar_one_or_none()
+    if not wf:
+        raise HTTPException(status_code=404, detail="Workflow not found")
+
+    from orchestrator_runtime.validate import validate_workflow_graph
+
+    return validate_workflow_graph(wf.graph or {})
