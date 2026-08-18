@@ -5,6 +5,9 @@ description = "Multi-agent orchestrator platform"
 requires-python = ">=3.11"
 dependencies = []
 
+[tool.uv]
+override-dependencies = ["bcrypt<5"]
+
 [tool.uv.workspace]
 members = [
     "packages/core",
