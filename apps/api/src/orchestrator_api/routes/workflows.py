@@ -1,16 +1,14 @@
 import uuid
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from fastapi import APIRouter, Depends, HTTPException
-from pydantic import BaseModel, Field
-from sqlalchemy import select
-from sqlalchemy.ext.asyncio import AsyncSession
-
+from orchestrator_api.deps import AuthContext, get_auth_context
 from orchestrator_core.database import get_session
 from orchestrator_core.models import Workflow
 from orchestrator_core.rbac import has_permission
-
-from orchestrator_api.deps import AuthContext, get_auth_context
+from pydantic import BaseModel, Field
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
 
 router = APIRouter(prefix="/workflows", tags=["workflows"])
 
@@ -175,7 +173,7 @@ async def update_workflow(
         wf.description = body.description
     if body.graph is not None:
         wf.graph = body.graph.model_dump()
-    wf.updated_at = datetime.now(timezone.utc)
+    wf.updated_at = datetime.now(UTC)
     await session.commit()
     await session.refresh(wf)
     return _to_response(wf)
@@ -203,7 +201,7 @@ async def publish_workflow(
 
     wf.is_published = True
     wf.version += 1
-    wf.updated_at = datetime.now(timezone.utc)
+    wf.updated_at = datetime.now(UTC)
     await session.commit()
     await session.refresh(wf)
     return _to_response(wf)

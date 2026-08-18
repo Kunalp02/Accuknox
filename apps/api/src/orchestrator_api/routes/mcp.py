@@ -1,18 +1,16 @@
 import uuid
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from fastapi import APIRouter, Depends, HTTPException
-from pydantic import BaseModel, Field
-from sqlalchemy import select
-from sqlalchemy.ext.asyncio import AsyncSession
-
+from orchestrator_api.deps import AuthContext, get_auth_context
 from orchestrator_core.database import get_session
 from orchestrator_core.models import McpConnection
 from orchestrator_core.rbac import has_permission
 from orchestrator_core.security import encrypt_secret
 from orchestrator_mcp.client import auth_from_encrypted, test_connection
-
-from orchestrator_api.deps import AuthContext, get_auth_context
+from pydantic import BaseModel, Field
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
 
 router = APIRouter(prefix="/mcp-connections", tags=["mcp"])
 
@@ -129,7 +127,7 @@ async def update_connection(
         conn.auth_credentials_encrypted = encrypt_secret(body.auth_credentials) if body.auth_credentials else None
     if body.tool_allowlist is not None:
         conn.tool_allowlist = body.tool_allowlist
-    conn.updated_at = datetime.now(timezone.utc)
+    conn.updated_at = datetime.now(UTC)
     await session.commit()
     await session.refresh(conn)
     return _to_response(conn)
@@ -165,7 +163,7 @@ async def test_mcp_connection(
             }
             for t in tools
         ]
-    conn.updated_at = datetime.now(timezone.utc)
+    conn.updated_at = datetime.now(UTC)
     await session.commit()
     await session.refresh(conn)
     return _to_response(conn)

@@ -2,7 +2,6 @@
 
 from typing import Any
 
-
 ALLOWED_TYPES = {"agent", "supervisor", "tool", "branch", "parallel", "human"}
 
 

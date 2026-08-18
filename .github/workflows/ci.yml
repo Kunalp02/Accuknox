@@ -52,7 +52,7 @@ jobs:
         run: uv run alembic -c alembic.ini upgrade head
 
       - name: Ruff lint
-        run: uv run ruff check packages apps
+        run: uv run ruff check packages apps tests --select F,I
 
       - name: Integration tests
         run: uv run pytest tests/ -v

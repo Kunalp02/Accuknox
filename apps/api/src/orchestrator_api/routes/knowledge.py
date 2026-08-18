@@ -1,16 +1,14 @@
 import uuid
 
 from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
-from pydantic import BaseModel
-from sqlalchemy import select
-from sqlalchemy.ext.asyncio import AsyncSession
-
+from orchestrator_api.deps import AuthContext, get_auth_context
 from orchestrator_core.config import settings
 from orchestrator_core.database import get_session
 from orchestrator_core.models import Document, KnowledgeBase
 from orchestrator_core.rbac import has_permission
-
-from orchestrator_api.deps import AuthContext, get_auth_context
+from pydantic import BaseModel
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
 
 router = APIRouter(prefix="/knowledge-bases", tags=["knowledge-bases"])
 

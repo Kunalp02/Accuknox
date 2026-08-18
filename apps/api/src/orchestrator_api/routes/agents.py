@@ -1,16 +1,14 @@
 import uuid
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from fastapi import APIRouter, Depends, HTTPException
-from pydantic import BaseModel, Field
-from sqlalchemy import select
-from sqlalchemy.ext.asyncio import AsyncSession
-
+from orchestrator_api.deps import AuthContext, get_auth_context
 from orchestrator_core.database import get_session
 from orchestrator_core.models import Agent
 from orchestrator_core.rbac import has_permission
-
-from orchestrator_api.deps import AuthContext, get_auth_context
+from pydantic import BaseModel, Field
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
 
 router = APIRouter(prefix="/agents", tags=["agents"])
 
@@ -167,7 +165,7 @@ async def update_agent(
         agent.config = {**agent.config, "knowledge_base_ids": body.knowledge_base_ids}
     if body.mcp_tools is not None:
         agent.config = {**agent.config, "mcp_tools": body.mcp_tools}
-    agent.updated_at = datetime.now(timezone.utc)
+    agent.updated_at = datetime.now(UTC)
 
     await session.commit()
     await session.refresh(agent)
@@ -189,7 +187,7 @@ async def publish_agent(
         raise HTTPException(status_code=404, detail="Agent not found")
     agent.is_published = True
     agent.version += 1
-    agent.updated_at = datetime.now(timezone.utc)
+    agent.updated_at = datetime.now(UTC)
     await session.commit()
     await session.refresh(agent)
     return _agent_to_response(agent)

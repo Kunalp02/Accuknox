@@ -2,7 +2,6 @@ from dataclasses import dataclass
 from typing import Any
 
 import httpx
-
 from orchestrator_core.security import decrypt_secret
 
 

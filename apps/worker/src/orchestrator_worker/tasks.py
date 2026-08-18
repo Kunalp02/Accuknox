@@ -1,8 +1,7 @@
 import uuid
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 import httpx
-
 from orchestrator_core.config import settings
 from orchestrator_core.database import async_session_factory
 from orchestrator_core.models import Agent, Document, Run, Workflow
@@ -12,7 +11,11 @@ from orchestrator_llm.gateway import get_gateway_for_org
 from orchestrator_rag.chunking import chunk_text
 from orchestrator_rag.qdrant import QdrantStore
 from orchestrator_runtime.agent import execute_agent
-from orchestrator_runtime.loader import build_agent_config, build_workflow_agent_map, load_mcp_clients
+from orchestrator_runtime.loader import (
+    build_agent_config,
+    build_workflow_agent_map,
+    load_mcp_clients,
+)
 from orchestrator_runtime.workflow import (
     execute_workflow,
     next_node_after,
@@ -47,7 +50,7 @@ async def _finalize_run(session, run: Run, status: str) -> None:
 
 async def _append_trace(session, run: Run, event_type: str, data: dict) -> None:
     entry = {
-        "ts": datetime.now(timezone.utc).isoformat(),
+        "ts": datetime.now(UTC).isoformat(),
         "type": event_type,
         "data": data,
     }
@@ -74,7 +77,7 @@ async def execute_agent_run(ctx: dict, run_id: str) -> None:
             return
 
         run.status = "running"
-        run.started_at = datetime.now(timezone.utc)
+        run.started_at = datetime.now(UTC)
         await session.commit()
         await publisher.publish(run_uuid, "run.status", {"status": "running"})
 
@@ -82,7 +85,7 @@ async def execute_agent_run(ctx: dict, run_id: str) -> None:
         if not agent:
             run.status = "failed"
             run.error = "Agent not found"
-            run.completed_at = datetime.now(timezone.utc)
+            run.completed_at = datetime.now(UTC)
             await session.commit()
             await publisher.publish(run_uuid, "run.failed", {"error": run.error})
             return
@@ -106,7 +109,7 @@ async def execute_agent_run(ctx: dict, run_id: str) -> None:
             run.status = "completed"
             run.output = {"message": result.output}
             run.metrics = result.metrics
-            run.completed_at = datetime.now(timezone.utc)
+            run.completed_at = datetime.now(UTC)
             await session.commit()
             await _finalize_run(session, run, "completed")
             await publisher.publish(run_uuid, "run.completed", run.output)
@@ -118,7 +121,7 @@ async def execute_agent_run(ctx: dict, run_id: str) -> None:
         except Exception as e:
             run.status = "failed"
             run.error = str(e)
-            run.completed_at = datetime.now(timezone.utc)
+            run.completed_at = datetime.now(UTC)
             await session.commit()
             await _finalize_run(session, run, "failed")
             await publisher.publish(run_uuid, "run.failed", {"error": str(e)})
@@ -145,7 +148,7 @@ async def execute_workflow_run(ctx: dict, run_id: str) -> None:
             return
 
         run.status = "running"
-        run.started_at = datetime.now(timezone.utc)
+        run.started_at = datetime.now(UTC)
         await session.commit()
         await publisher.publish(run_uuid, "run.status", {"status": "running"})
 
@@ -182,7 +185,7 @@ async def execute_workflow_run(ctx: dict, run_id: str) -> None:
                 run.status = "completed"
                 run.output = {"message": state.last_output, "node_outputs": state.node_outputs}
                 run.metrics = metrics
-                run.completed_at = datetime.now(timezone.utc)
+                run.completed_at = datetime.now(UTC)
                 await session.commit()
                 await _finalize_run(session, run, "completed")
                 await publisher.publish(run_uuid, "run.completed", run.output)
@@ -190,7 +193,7 @@ async def execute_workflow_run(ctx: dict, run_id: str) -> None:
         except Exception as e:
             run.status = "failed"
             run.error = str(e)
-            run.completed_at = datetime.now(timezone.utc)
+            run.completed_at = datetime.now(UTC)
             await session.commit()
             await _finalize_run(session, run, "failed")
             await publisher.publish(run_uuid, "run.failed", {"error": str(e)})
@@ -258,7 +261,7 @@ async def resume_workflow_run(ctx: dict, run_id: str) -> None:
                 run.status = "completed"
                 run.output = {"message": state.last_output, "node_outputs": state.node_outputs}
                 run.metrics = {**run.metrics, **metrics}
-                run.completed_at = datetime.now(timezone.utc)
+                run.completed_at = datetime.now(UTC)
                 run.checkpoint_data = None
                 await session.commit()
                 await _finalize_run(session, run, "completed")
@@ -266,7 +269,7 @@ async def resume_workflow_run(ctx: dict, run_id: str) -> None:
         except Exception as e:
             run.status = "failed"
             run.error = str(e)
-            run.completed_at = datetime.now(timezone.utc)
+            run.completed_at = datetime.now(UTC)
             await session.commit()
             await _finalize_run(session, run, "failed")
             await publisher.publish(run_uuid, "run.failed", {"error": str(e)})
@@ -289,7 +292,7 @@ async def index_document(ctx: dict, document_id: str) -> None:
         await session.commit()
 
         try:
-            with open(doc.storage_path, "r", encoding="utf-8", errors="ignore") as f:
+            with open(doc.storage_path, encoding="utf-8", errors="ignore") as f:
                 text = f.read()
             chunks = chunk_text(text)
             if not chunks:

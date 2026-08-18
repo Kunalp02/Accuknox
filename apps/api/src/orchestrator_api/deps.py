@@ -1,15 +1,14 @@
 import uuid
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Annotated
 
 from fastapi import Depends, Header, HTTPException, status
 from jose import JWTError
+from orchestrator_core.database import get_session
+from orchestrator_core.models import ApiKey
+from orchestrator_core.security import decode_access_token, hash_api_key
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
-
-from orchestrator_core.database import get_session
-from orchestrator_core.models import ApiKey, User
-from orchestrator_core.security import decode_access_token, hash_api_key
 
 
 class AuthContext:
@@ -68,7 +67,7 @@ async def _auth_api_key(session: AsyncSession, key: str) -> AuthContext:
     api_key = result.scalar_one_or_none()
     if not api_key:
         raise HTTPException(status_code=401, detail="Invalid API key")
-    if api_key.expires_at and api_key.expires_at < datetime.now(timezone.utc):
+    if api_key.expires_at and api_key.expires_at < datetime.now(UTC):
         raise HTTPException(status_code=401, detail="API key expired")
     return AuthContext(
         org_id=api_key.organization_id,

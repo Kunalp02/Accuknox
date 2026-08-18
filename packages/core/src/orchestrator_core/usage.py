@@ -1,7 +1,7 @@
 """Record daily usage metrics per organization."""
 
 import uuid
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -15,7 +15,7 @@ async def record_run_usage(
     metrics: dict,
     status: str,
 ) -> None:
-    today = datetime.now(timezone.utc).date()
+    today = datetime.now(UTC).date()
     result = await session.execute(
         select(UsageDaily).where(
             UsageDaily.organization_id == org_id,
@@ -34,4 +34,4 @@ async def record_run_usage(
         row.runs_failed += 1
     row.tokens_in += int(metrics.get("tokens_in", 0))
     row.tokens_out += int(metrics.get("tokens_out", 0))
-    row.updated_at = datetime.now(timezone.utc)
+    row.updated_at = datetime.now(UTC)
