@@ -1,5 +1,6 @@
 from dataclasses import dataclass
 
+import httpx
 from openai import AsyncOpenAI
 from orchestrator_core.config import settings
 
@@ -12,17 +13,41 @@ class GatewayConfig:
     embed_model: str
 
 
+def normalize_gateway_base_url(url: str) -> str:
+    """OpenAI client expects base_url ending in /v1."""
+    normalized = url.strip().rstrip("/")
+    if not normalized.endswith("/v1"):
+        normalized = f"{normalized}/v1"
+    return normalized
+
+
 def platform_gateway_config() -> GatewayConfig:
     return GatewayConfig(
-        base_url=settings.llm_gateway_url,
+        base_url=normalize_gateway_base_url(settings.llm_gateway_url),
         api_key=settings.llm_gateway_key,
         default_model=settings.llm_default_model,
         embed_model=settings.embed_model,
     )
 
 
+def create_openai_http_client() -> httpx.AsyncClient:
+    """
+    trust_env=False ignores system HTTP_PROXY (direct connection, like curl without proxy).
+    Set LLM_GATEWAY_VERIFY_SSL=false for self-signed certs (like curl -k).
+    """
+    return httpx.AsyncClient(
+        verify=settings.llm_gateway_verify_ssl,
+        trust_env=settings.llm_gateway_trust_env,
+        timeout=httpx.Timeout(120.0, connect=30.0),
+    )
+
+
 def create_openai_client(config: GatewayConfig) -> AsyncOpenAI:
-    return AsyncOpenAI(base_url=config.base_url, api_key=config.api_key)
+    return AsyncOpenAI(
+        base_url=normalize_gateway_base_url(config.base_url),
+        api_key=config.api_key or "ollama",
+        http_client=create_openai_http_client(),
+    )
 
 
 async def chat_completion(

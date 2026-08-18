@@ -1,11 +1,10 @@
-
 from fastapi import APIRouter, Depends, HTTPException
-from openai import AsyncOpenAI
 from orchestrator_api.deps import AuthContext, get_auth_context
 from orchestrator_core.config import settings
 from orchestrator_core.database import get_session
 from orchestrator_core.models import LlmGatewayConfig
 from orchestrator_core.rbac import has_permission
+from orchestrator_llm.client import create_openai_client, normalize_gateway_base_url
 from orchestrator_llm.gateway import (
     delete_gateway_config,
     get_gateway_for_org,
@@ -82,7 +81,7 @@ async def update_llm_gateway_settings(
     await upsert_gateway_config(
         session,
         auth.org_id,
-        body.base_url.rstrip("/"),
+        normalize_gateway_base_url(body.base_url),
         body.default_model,
         body.embed_model,
         body.api_key,
@@ -109,15 +108,28 @@ async def test_llm_gateway(
 ):
     _check(auth, "org:read")
     gateway = await get_gateway_for_org(session, auth.org_id)
-    client = AsyncOpenAI(base_url=gateway.base_url, api_key=gateway.api_key)
+    client = create_openai_client(gateway)
     try:
-        models = await client.models.list()
-        model_ids = [m.id for m in models.data[:20]]
+        response = await client.chat.completions.create(
+            model=gateway.default_model,
+            messages=[{"role": "user", "content": "ping"}],
+            max_tokens=8,
+        )
+        preview = (response.choices[0].message.content or "").strip()
         return {
             "ok": True,
-            "base_url": gateway.base_url,
-            "models_sample": model_ids,
+            "base_url": normalize_gateway_base_url(gateway.base_url),
             "default_model": gateway.default_model,
+            "response_preview": preview,
+            "verify_ssl": settings.llm_gateway_verify_ssl,
+            "trust_env": settings.llm_gateway_trust_env,
         }
     except Exception as e:
-        return {"ok": False, "error": str(e), "base_url": gateway.base_url}
+        return {
+            "ok": False,
+            "error": str(e),
+            "base_url": normalize_gateway_base_url(gateway.base_url),
+            "hint": "Use https://aigw.ccilindia.net/v1 as base URL. "
+            "Set LLM_GATEWAY_VERIFY_SSL=false for self-signed certs. "
+            "Set LLM_GATEWAY_TRUST_ENV=false to bypass system proxy.",
+        }
