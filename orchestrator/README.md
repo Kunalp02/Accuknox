@@ -65,6 +65,10 @@ Open http://localhost:5173
 |----------|-------------|
 | `POST /v1/auth/signup` | Create org + user |
 | `POST /v1/auth/login` | JWT login |
+| `CRUD /v1/workflows` | Multi-agent workflows |
+| `POST /v1/workflows/{id}/invoke` | Async workflow invoke |
+| `POST /v1/runs/{id}/resume` | Resume human-in-the-loop step |
+| `CRUD /v1/mcp-connections` | MCP HTTP server connections |
 | `CRUD /v1/agents` | Agent management |
 | `POST /v1/agents/{id}/invoke` | Async invoke → `202 { run_id }` |
 | `GET /v1/runs/{id}` | Poll run status |

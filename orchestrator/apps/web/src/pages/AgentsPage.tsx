@@ -1,16 +1,21 @@
 import { useEffect, useState } from "react";
-import { api, Agent, streamRunEvents, KnowledgeBase } from "../api";
+import { api, Agent, McpConnection, streamRunEvents, KnowledgeBase } from "../api";
+
+type McpToolEntry = { connection_id: string; tools: string[] };
 
 export default function AgentsPage() {
   const [agents, setAgents] = useState<Agent[]>([]);
   const [kbs, setKbs] = useState<KnowledgeBase[]>([]);
+  const [mcpConnections, setMcpConnections] = useState<McpConnection[]>([]);
   const [selected, setSelected] = useState<Agent | null>(null);
   const [form, setForm] = useState({
     name: "",
+    description: "",
     system_prompt: "You are a helpful assistant.",
     model: "llama3.2",
     temperature: 0.7,
     knowledge_base_ids: [] as string[],
+    mcp_tools: [] as McpToolEntry[],
   });
   const [testInput, setTestInput] = useState("");
   const [output, setOutput] = useState("");
@@ -18,24 +23,33 @@ export default function AgentsPage() {
   const [running, setRunning] = useState(false);
 
   const load = async () => {
-    const [a, k] = await Promise.all([api.listAgents(), api.listKbs()]);
+    const [a, k, m] = await Promise.all([
+      api.listAgents(),
+      api.listKbs(),
+      api.listMcpConnections(),
+    ]);
     setAgents(a);
     setKbs(k);
+    setMcpConnections(m);
   };
 
   useEffect(() => {
     load();
   }, []);
 
+  const resetForm = () => ({
+    name: "",
+    description: "",
+    system_prompt: "You are a helpful assistant.",
+    model: "llama3.2",
+    temperature: 0.7,
+    knowledge_base_ids: [],
+    mcp_tools: [],
+  });
+
   const create = async () => {
     await api.createAgent(form);
-    setForm({
-      name: "",
-      system_prompt: "You are a helpful assistant.",
-      model: "llama3.2",
-      temperature: 0.7,
-      knowledge_base_ids: [],
-    });
+    setForm(resetForm());
     await load();
   };
 
@@ -43,10 +57,12 @@ export default function AgentsPage() {
     setSelected(agent);
     setForm({
       name: agent.name,
+      description: agent.description || "",
       system_prompt: agent.system_prompt,
       model: agent.model,
       temperature: agent.temperature,
       knowledge_base_ids: agent.knowledge_base_ids || [],
+      mcp_tools: agent.mcp_tools || [],
     });
     setOutput("");
     setEvents([]);
@@ -64,6 +80,30 @@ export default function AgentsPage() {
     const updated = await api.publishAgent(selected.id);
     setSelected(updated);
     await load();
+  };
+
+  const toggleMcpTool = (connectionId: string, toolName: string, checked: boolean) => {
+    const existing = form.mcp_tools.find((e) => e.connection_id === connectionId);
+    let mcp_tools: McpToolEntry[];
+    if (existing) {
+      const tools = checked
+        ? [...existing.tools, toolName]
+        : existing.tools.filter((t) => t !== toolName);
+      mcp_tools = form.mcp_tools.map((e) =>
+        e.connection_id === connectionId ? { ...e, tools } : e
+      );
+      if (!tools.length) mcp_tools = mcp_tools.filter((e) => e.connection_id !== connectionId);
+    } else if (checked) {
+      mcp_tools = [...form.mcp_tools, { connection_id: connectionId, tools: [toolName] }];
+    } else {
+      mcp_tools = form.mcp_tools;
+    }
+    setForm({ ...form, mcp_tools });
+  };
+
+  const isToolChecked = (connectionId: string, toolName: string) => {
+    const entry = form.mcp_tools.find((e) => e.connection_id === connectionId);
+    return entry?.tools.includes(toolName) ?? false;
   };
 
   const invoke = async () => {
@@ -102,9 +142,16 @@ export default function AgentsPage() {
     }
   };
 
+  const apiEndpoint = selected
+    ? `${window.location.origin}/v1/agents/${selected.id}/invoke`
+    : "";
+
   return (
     <div className="stack">
       <h2 style={{ margin: 0 }}>Agents</h2>
+      <p style={{ color: "var(--muted)", margin: 0 }}>
+        Build a single agent, publish it, and expose it as an async API product.
+      </p>
       <div className="grid-2">
         <div className="card stack">
           <h3 style={{ margin: 0 }}>Your agents</h3>
@@ -138,6 +185,14 @@ export default function AgentsPage() {
           {selected ? (
             <>
               <h3 style={{ margin: 0 }}>Edit: {selected.name}</h3>
+              <div className="field">
+                <label>Description</label>
+                <input
+                  value={form.description}
+                  onChange={(e) => setForm({ ...form, description: e.target.value })}
+                  placeholder="What this agent does"
+                />
+              </div>
               <div className="field">
                 <label>System prompt</label>
                 <textarea
@@ -181,10 +236,51 @@ export default function AgentsPage() {
                   ))}
                 </div>
               )}
+              {mcpConnections.some((c) => c.discovered_tools?.length) && (
+                <div className="field">
+                  <label>MCP tools</label>
+                  {mcpConnections.map((conn) =>
+                    conn.discovered_tools?.length ? (
+                      <div key={conn.id} style={{ marginBottom: "0.5rem" }}>
+                        <strong style={{ fontSize: "0.85rem" }}>{conn.name}</strong>
+                        {conn.discovered_tools.map((tool) => (
+                          <label
+                            key={tool.name}
+                            style={{ display: "flex", gap: "0.5rem", alignItems: "center", marginTop: "0.25rem" }}
+                          >
+                            <input
+                              type="checkbox"
+                              checked={isToolChecked(conn.id, tool.name)}
+                              onChange={(e) => toggleMcpTool(conn.id, tool.name, e.target.checked)}
+                            />
+                            <span className="mono">{tool.name}</span>
+                          </label>
+                        ))}
+                      </div>
+                    ) : null
+                  )}
+                </div>
+              )}
               <div style={{ display: "flex", gap: "0.5rem" }}>
                 <button type="button" onClick={save}>Save</button>
                 <button type="button" className="secondary" onClick={publish}>Publish</button>
               </div>
+              {selected.is_published && (
+                <div style={{ padding: "1rem", background: "var(--bg)", borderRadius: 8 }}>
+                  <h4 style={{ margin: "0 0 0.5rem" }}>API endpoint</h4>
+                  <p className="mono" style={{ margin: 0, fontSize: "0.85rem" }}>POST {apiEndpoint}</p>
+                  <p style={{ color: "var(--muted)", margin: "0.5rem 0 0", fontSize: "0.85rem" }}>
+                    Returns <span className="mono">202</span> with <span className="mono">run_id</span>.
+                    Use API key header <span className="mono">X-API-Key</span> or Bearer.
+                  </p>
+                  <pre className="mono" style={{ fontSize: "0.75rem", marginTop: "0.5rem", color: "var(--muted)" }}>
+{`curl -X POST ${apiEndpoint} \\
+  -H "X-API-Key: oak_..." \\
+  -H "Content-Type: application/json" \\
+  -d '{"input":"Hello"}'`}
+                  </pre>
+                </div>
+              )}
               <hr style={{ border: "none", borderTop: "1px solid var(--border)" }} />
               <h4 style={{ margin: 0 }}>Test invoke (async)</h4>
               <textarea

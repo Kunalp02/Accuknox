@@ -14,9 +14,10 @@ from orchestrator_core.config import settings
 from orchestrator_core.database import get_session
 from orchestrator_core.models import Agent, Run, Workflow
 from orchestrator_core.rbac import has_permission
-from orchestrator_core.security import generate_api_key, hash_api_key
+from orchestrator_core.security import generate_api_key, hash_api_key, encrypt_secret
 
 from orchestrator_api.deps import AuthContext, get_auth_context
+from orchestrator_api.guards import check_resource_scope, enforce_rate_limit
 from orchestrator_events.publisher import EventPublisher
 
 router = APIRouter(tags=["runs"])
@@ -27,6 +28,7 @@ class InvokeRequest(BaseModel):
     input: str = Field(min_length=1)
     context: dict = Field(default_factory=dict)
     webhook_url: HttpUrl | None = None
+    webhook_secret: str | None = Field(default=None, max_length=500)
 
 
 class ResumeRequest(BaseModel):
@@ -114,6 +116,8 @@ async def invoke_agent(
     session: AsyncSession = Depends(get_session),
 ):
     _check(auth, "agent:invoke")
+    await enforce_rate_limit(auth)
+    check_resource_scope(auth, agent_id)
     result = await session.execute(
         select(Agent).where(Agent.id == agent_id, Agent.organization_id == auth.org_id)
     )
@@ -129,6 +133,7 @@ async def invoke_agent(
         status="pending",
         input={"message": body.input, "context": body.context},
         webhook_url=str(body.webhook_url) if body.webhook_url else None,
+        webhook_secret_encrypted=encrypt_secret(body.webhook_secret) if body.webhook_secret else None,
     )
     session.add(run)
     await session.commit()
@@ -147,6 +152,8 @@ async def invoke_workflow(
     session: AsyncSession = Depends(get_session),
 ):
     _check(auth, "workflow:invoke")
+    await enforce_rate_limit(auth)
+    check_resource_scope(auth, workflow_id)
     result = await session.execute(
         select(Workflow).where(Workflow.id == workflow_id, Workflow.organization_id == auth.org_id)
     )
@@ -162,6 +169,7 @@ async def invoke_workflow(
         status="pending",
         input={"message": body.input, "context": body.context},
         webhook_url=str(body.webhook_url) if body.webhook_url else None,
+        webhook_secret_encrypted=encrypt_secret(body.webhook_secret) if body.webhook_secret else None,
     )
     session.add(run)
     await session.commit()
@@ -178,6 +186,7 @@ async def resume_run(
     session: AsyncSession = Depends(get_session),
 ):
     _check(auth, "workflow:invoke")
+    await enforce_rate_limit(auth)
     result = await session.execute(
         select(Run).where(Run.id == run_id, Run.organization_id == auth.org_id)
     )

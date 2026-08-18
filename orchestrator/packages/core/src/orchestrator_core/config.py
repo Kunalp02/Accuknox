@@ -23,6 +23,8 @@ class Settings(BaseSettings):
     jwt_expire_minutes: int = 1440
     encryption_key: str = "change-me-32-byte-key-for-encryption!!"
 
+    org_rate_limit_per_minute: int = 120
+
     api_host: str = "0.0.0.0"
     api_port: int = 8000
     cors_origins: str = "http://localhost:5173"

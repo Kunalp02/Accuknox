@@ -1,8 +1,9 @@
 import uuid
-from datetime import datetime, timezone
+from datetime import date, datetime, timezone
 
 from sqlalchemy import (
     Boolean,
+    Date,
     DateTime,
     ForeignKey,
     Integer,
@@ -112,9 +113,27 @@ class Run(Base):
     metrics: Mapped[dict] = mapped_column(JSONB, default=dict)
     checkpoint_data: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
     webhook_url: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    webhook_secret_encrypted: Mapped[str | None] = mapped_column(Text, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
     started_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+
+class UsageDaily(Base):
+    __tablename__ = "usage_daily"
+    __table_args__ = (UniqueConstraint("organization_id", "usage_date"),)
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    organization_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("organizations.id"), nullable=False, index=True
+    )
+    usage_date: Mapped[date] = mapped_column(Date, nullable=False, index=True)
+    runs_total: Mapped[int] = mapped_column(Integer, default=0)
+    runs_completed: Mapped[int] = mapped_column(Integer, default=0)
+    runs_failed: Mapped[int] = mapped_column(Integer, default=0)
+    tokens_in: Mapped[int] = mapped_column(Integer, default=0)
+    tokens_out: Mapped[int] = mapped_column(Integer, default=0)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
 
 
 class KnowledgeBase(Base):

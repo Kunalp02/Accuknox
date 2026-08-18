@@ -20,12 +20,16 @@ class AuthContext:
         role: str | None = None,
         api_key_id: uuid.UUID | None = None,
         scopes: list[str] | None = None,
+        resource_ids: list[str] | None = None,
+        rate_limit_per_minute: int | None = None,
     ):
         self.org_id = org_id
         self.user_id = user_id
         self.role = role
         self.api_key_id = api_key_id
         self.scopes = scopes or []
+        self.resource_ids = resource_ids or []
+        self.rate_limit_per_minute = rate_limit_per_minute
         self.is_api_key = api_key_id is not None
 
 
@@ -69,5 +73,7 @@ async def _auth_api_key(session: AsyncSession, key: str) -> AuthContext:
     return AuthContext(
         org_id=api_key.organization_id,
         api_key_id=api_key.id,
-        scopes=api_key.scopes,
+        scopes=api_key.scopes or [],
+        resource_ids=api_key.resource_ids or [],
+        rate_limit_per_minute=api_key.rate_limit_per_minute,
     )

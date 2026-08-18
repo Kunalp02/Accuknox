@@ -75,12 +75,21 @@ export const api = {
     if (!res.ok) throw new Error("Upload failed");
     return res.json();
   },
-  createApiKey: (name: string) =>
+  createApiKey: (data: {
+    name: string;
+    scopes?: string[];
+    resource_ids?: string[];
+    rate_limit_per_minute?: number;
+  }) =>
     request<ApiKey>("/v1/api-keys", {
       method: "POST",
-      body: JSON.stringify({ name, scopes: ["agent:invoke", "run:read"] }),
+      body: JSON.stringify({
+        scopes: ["agent:invoke", "workflow:invoke", "run:read"],
+        ...data,
+      }),
     }),
   listApiKeys: () => request<ApiKey[]>("/v1/api-keys"),
+  getUsage: (days?: number) => request<UsageDay[]>(`/v1/usage?days=${days || 30}`),
   listWorkflows: () => request<Workflow[]>("/v1/workflows"),
   createWorkflow: (data: { name: string; description?: string; graph?: WorkflowGraph }) =>
     request<Workflow>("/v1/workflows", { method: "POST", body: JSON.stringify(data) }),
@@ -171,6 +180,16 @@ export interface ApiKey {
   key_prefix: string;
   key?: string;
   scopes: string[];
+  resource_ids?: string[];
+}
+
+export interface UsageDay {
+  date: string;
+  runs_total: number;
+  runs_completed: number;
+  runs_failed: number;
+  tokens_in: number;
+  tokens_out: number;
 }
 
 export function streamRunEvents(

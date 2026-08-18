@@ -12,6 +12,7 @@ from orchestrator_api.routes.runs import router as runs_router, api_keys_router
 from orchestrator_api.routes.knowledge import router as knowledge_router
 from orchestrator_api.routes.workflows import router as workflows_router
 from orchestrator_api.routes.mcp import router as mcp_router
+from orchestrator_api.routes.usage import router as usage_router
 
 
 @asynccontextmanager
@@ -42,6 +43,7 @@ app.include_router(api_keys_router, prefix="/v1")
 app.include_router(knowledge_router, prefix="/v1")
 app.include_router(workflows_router, prefix="/v1")
 app.include_router(mcp_router, prefix="/v1")
+app.include_router(usage_router, prefix="/v1")
 
 
 @app.get("/health")

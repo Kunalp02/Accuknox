@@ -23,12 +23,25 @@ from orchestrator_runtime.workflow import (
 async def _send_webhook(run: Run, event: str, payload: dict) -> None:
     if not run.webhook_url:
         return
-    body = {"event": event, "run_id": str(run.id), **payload}
+    body = {"event": event, "run_id": str(run.id), "org_id": str(run.organization_id), **payload}
+    headers: dict[str, str] = {}
+    if run.webhook_secret_encrypted:
+        from orchestrator_core.security import decrypt_secret
+        from orchestrator_core.webhooks import sign_webhook_payload
+
+        secret = decrypt_secret(run.webhook_secret_encrypted)
+        headers["X-Orchestrator-Signature"] = sign_webhook_payload(secret, body)
     try:
         async with httpx.AsyncClient(timeout=10) as client:
-            await client.post(run.webhook_url, json=body)
+            await client.post(run.webhook_url, json=body, headers=headers)
     except Exception:
         pass
+
+
+async def _finalize_run(session, run: Run, status: str) -> None:
+    from orchestrator_core.usage import record_run_usage
+
+    await record_run_usage(session, run.organization_id, run.metrics or {}, status)
 
 
 async def execute_agent_run(ctx: dict, run_id: str) -> None:
@@ -77,6 +90,7 @@ async def execute_agent_run(ctx: dict, run_id: str) -> None:
             run.metrics = result.metrics
             run.completed_at = datetime.now(timezone.utc)
             await session.commit()
+            await _finalize_run(session, run, "completed")
             await publisher.publish(run_uuid, "run.completed", run.output)
             await _send_webhook(
                 run,
@@ -88,6 +102,7 @@ async def execute_agent_run(ctx: dict, run_id: str) -> None:
             run.error = str(e)
             run.completed_at = datetime.now(timezone.utc)
             await session.commit()
+            await _finalize_run(session, run, "failed")
             await publisher.publish(run_uuid, "run.failed", {"error": str(e)})
             await _send_webhook(run, "run.failed", {"status": "failed", "error": str(e)})
 
@@ -152,6 +167,7 @@ async def execute_workflow_run(ctx: dict, run_id: str) -> None:
                 run.metrics = metrics
                 run.completed_at = datetime.now(timezone.utc)
                 await session.commit()
+                await _finalize_run(session, run, "completed")
                 await publisher.publish(run_uuid, "run.completed", run.output)
                 await _send_webhook(run, "run.completed", {"status": "completed", "output": run.output})
         except Exception as e:
@@ -159,6 +175,7 @@ async def execute_workflow_run(ctx: dict, run_id: str) -> None:
             run.error = str(e)
             run.completed_at = datetime.now(timezone.utc)
             await session.commit()
+            await _finalize_run(session, run, "failed")
             await publisher.publish(run_uuid, "run.failed", {"error": str(e)})
 
     await publisher.close()
@@ -228,12 +245,14 @@ async def resume_workflow_run(ctx: dict, run_id: str) -> None:
                 run.completed_at = datetime.now(timezone.utc)
                 run.checkpoint_data = None
                 await session.commit()
+                await _finalize_run(session, run, "completed")
                 await publisher.publish(run_uuid, "run.completed", run.output)
         except Exception as e:
             run.status = "failed"
             run.error = str(e)
             run.completed_at = datetime.now(timezone.utc)
             await session.commit()
+            await _finalize_run(session, run, "failed")
             await publisher.publish(run_uuid, "run.failed", {"error": str(e)})
 
     await publisher.close()
