@@ -37,6 +37,13 @@ start_docker
 cd "$ROOT"
 docker compose -f infra/docker-compose.yml up -d
 
+# Qdrant can fail on snapshot restores when its volume has stale temp state
+if ! docker compose -f infra/docker-compose.yml ps qdrant 2>/dev/null | grep -q "Up"; then
+  docker compose -f infra/docker-compose.yml rm -sf qdrant 2>/dev/null || true
+  docker volume rm -f infra_qdrant_data 2>/dev/null || true
+  docker compose -f infra/docker-compose.yml up -d qdrant
+fi
+
 for _ in $(seq 1 60); do
   if docker compose -f infra/docker-compose.yml exec -T postgres pg_isready -U orchestrator &>/dev/null; then
     exit 0

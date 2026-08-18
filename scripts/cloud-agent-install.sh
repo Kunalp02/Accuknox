@@ -12,8 +12,6 @@ if ! command -v uv &>/dev/null; then
 fi
 
 python3 -m uv sync --all-packages
-# passlib 1.7 is incompatible with bcrypt 5.x during backend detection
-python3 -m uv pip install --python .venv 'bcrypt<5.0'
 
 cd apps/web
 npm ci
