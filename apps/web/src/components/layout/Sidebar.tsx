@@ -12,6 +12,7 @@ import {
 } from "lucide-react";
 import { cn } from "../../lib/cn";
 import { clearToken } from "../../api";
+import { useMe } from "../../hooks/useMe";
 
 const navItems = [
   { to: "/agents", label: "Agents", icon: Bot },
@@ -24,6 +25,8 @@ const navItems = [
 ];
 
 export function Sidebar() {
+  const me = useMe();
+
   return (
     <aside className="flex w-60 shrink-0 flex-col border-r border-border bg-white">
       <div className="flex h-14 items-center gap-2 border-b border-border px-5">
@@ -53,7 +56,13 @@ export function Sidebar() {
         ))}
       </nav>
 
-      <div className="border-t border-border p-3">
+      <div className="border-t border-border p-3 space-y-2">
+        {me && (
+          <div className="rounded-lg bg-gray-50 px-3 py-2">
+            <p className="truncate text-xs font-medium text-gray-900">{me.email}</p>
+            <p className="text-[11px] text-gray-500 capitalize">{me.role}</p>
+          </div>
+        )}
         <button
           type="button"
           onClick={() => {

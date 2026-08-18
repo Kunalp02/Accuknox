@@ -57,6 +57,7 @@ export const api = {
     request<Agent>("/v1/agents", { method: "POST", body: JSON.stringify(data) }),
   updateAgent: (id: string, data: Partial<Agent>) =>
     request<Agent>(`/v1/agents/${id}`, { method: "PATCH", body: JSON.stringify(data) }),
+  deleteAgent: (id: string) => request<void>(`/v1/agents/${id}`, { method: "DELETE" }),
   publishAgent: (id: string) =>
     request<Agent>(`/v1/agents/${id}/publish`, { method: "POST" }),
   invokeAgent: (id: string, input: string) =>
@@ -104,6 +105,7 @@ export const api = {
     request<Workflow>("/v1/workflows", { method: "POST", body: JSON.stringify(data) }),
   updateWorkflow: (id: string, data: Partial<Workflow>) =>
     request<Workflow>(`/v1/workflows/${id}`, { method: "PATCH", body: JSON.stringify(data) }),
+  deleteWorkflow: (id: string) => request<void>(`/v1/workflows/${id}`, { method: "DELETE" }),
   publishWorkflow: (id: string) =>
     request<Workflow>(`/v1/workflows/${id}/publish`, { method: "POST" }),
   validateWorkflow: (id: string) =>

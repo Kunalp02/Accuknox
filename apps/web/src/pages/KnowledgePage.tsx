@@ -11,6 +11,7 @@ export default function KnowledgePage() {
   const [kbs, setKbs] = useState<KnowledgeBase[]>([]);
   const [name, setName] = useState("");
   const [selectedKb, setSelectedKb] = useState<string | null>(null);
+  const [uploadMsg, setUploadMsg] = useState("");
 
   const load = () => api.listKbs().then(setKbs);
 
@@ -29,8 +30,9 @@ export default function KnowledgePage() {
     const file = e.target.files?.[0];
     if (!file || !selectedKb) return;
     await api.uploadDoc(selectedKb, file);
-    alert("Document uploaded — indexing in background");
+    setUploadMsg("Document uploaded — indexing in background");
     e.target.value = "";
+    setTimeout(() => setUploadMsg(""), 4000);
   };
 
   return (
@@ -80,6 +82,7 @@ export default function KnowledgePage() {
                 onChange={upload}
                 className="text-sm text-gray-600 file:mr-3 file:rounded-lg file:border-0 file:bg-primary-subtle file:px-4 file:py-2 file:text-sm file:font-medium file:text-primary hover:file:bg-indigo-100"
               />
+              {uploadMsg && <p className="text-sm text-emerald-600">{uploadMsg}</p>}
             </div>
           ) : (
             <p className="text-sm text-gray-500">Select a knowledge base first</p>

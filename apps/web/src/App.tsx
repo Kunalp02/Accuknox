@@ -10,6 +10,7 @@ import WorkflowsPage from "./pages/WorkflowsPage";
 import McpPage from "./pages/McpPage";
 import SettingsPage from "./pages/SettingsPage";
 import { AppShell } from "./components/layout/AppShell";
+import { PageLoader } from "./components/ui/spinner";
 import { Button } from "./components/ui/button";
 import { Card } from "./components/ui/card";
 import { Field } from "./components/ui/label";
@@ -141,7 +142,7 @@ export default function App() {
       });
   }, []);
 
-  if (!ready) return null;
+  if (!ready) return <PageLoader />;
 
   return (
     <Routes>

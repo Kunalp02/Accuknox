@@ -10,7 +10,7 @@ import ReactFlow, {
   useNodesState,
 } from "reactflow";
 import "reactflow/dist/style.css";
-import { Plus } from "lucide-react";
+import { Plus, Trash2 } from "lucide-react";
 import { api, Agent, McpConnection, Workflow, streamRunEvents } from "../api";
 import { NodeConfigPanel, nodeLabel, WorkflowNodeData } from "../components/WorkflowNodePanel";
 import { PageHeader } from "../components/ui/page-header";
@@ -162,6 +162,15 @@ export default function WorkflowsPage() {
     setValidation(result);
   };
 
+  const deleteSelected = async () => {
+    if (!selected || !confirm(`Delete workflow "${selected.name}"?`)) return;
+    await api.deleteWorkflow(selected.id);
+    setSelected(null);
+    setNodes([]);
+    setEdges([]);
+    await load();
+  };
+
   const addNode = () => {
     const id = newNodeId || `${newNodeType}_${nodes.length + 1}`;
     const base: WorkflowNodeData = { id, type: newNodeType };
@@ -301,6 +310,9 @@ export default function WorkflowsPage() {
                   onClick={() => api.publishWorkflow(selected.id).then(load)}
                 >
                   Publish
+                </Button>
+                <Button type="button" variant="danger" size="sm" onClick={deleteSelected}>
+                  <Trash2 className="h-4 w-4" />
                 </Button>
               </div>
 

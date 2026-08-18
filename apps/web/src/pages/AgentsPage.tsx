@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Plus, Send } from "lucide-react";
+import { Plus, Send, Trash2 } from "lucide-react";
 import { api, Agent, McpConnection, streamRunEvents, KnowledgeBase } from "../api";
 import { PageHeader } from "../components/ui/page-header";
 import { Card, CardHeader } from "../components/ui/card";
@@ -88,6 +88,14 @@ export default function AgentsPage() {
     if (!selected) return;
     const updated = await api.publishAgent(selected.id);
     setSelected(updated);
+    await load();
+  };
+
+  const deleteSelected = async () => {
+    if (!selected || !confirm(`Delete agent "${selected.name}"?`)) return;
+    await api.deleteAgent(selected.id);
+    setSelected(null);
+    setForm(resetForm());
     await load();
   };
 
@@ -278,6 +286,9 @@ export default function AgentsPage() {
               <div className="flex gap-2">
                 <Button type="button" onClick={save}>Save</Button>
                 <Button type="button" variant="secondary" onClick={publish}>Publish</Button>
+                <Button type="button" variant="danger" size="sm" onClick={deleteSelected}>
+                  <Trash2 className="h-4 w-4" />
+                </Button>
               </div>
             </div>
           ) : (
