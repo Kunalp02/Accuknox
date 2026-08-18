@@ -1,0 +1,11 @@
+.venv/
+__pycache__/
+*.py[cod]
+.env
+*.egg-info/
+dist/
+node_modules/
+apps/web/dist/
+/tmp/orchestrator_docs/
+uv.lock
+*.tsbuildinfo
