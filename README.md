@@ -16,37 +16,34 @@ Multi-agent orchestrator platform — SaaS multi-tenant, async API, Qdrant RAG, 
 ### 1. Infrastructure
 
 ```bash
-cd orchestrator/infra
+cd infra
 docker compose up -d
 ```
 
 ### 2. Python (uv recommended)
 
 ```bash
-cd orchestrator
 cp .env.example .env
 # Edit LLM_GATEWAY_URL and LLM_GATEWAY_KEY for your Ollama/Bifrost endpoint
 
 pip install uv
-uv sync
+uv sync --all-packages
 ```
 
 ### 3. Run API + worker
 
 ```bash
 # Terminal 1 — API
-cd orchestrator
 uv run --package orchestrator-api uvicorn orchestrator_api.main:app --reload --host 0.0.0.0 --port 8000
 
 # Terminal 2 — Worker
-cd orchestrator
 uv run --package orchestrator-worker arq orchestrator_worker.tasks.WorkerSettings
 ```
 
 ### 4. Frontend
 
 ```bash
-cd orchestrator/apps/web
+cd apps/web
 npm install
 npm run dev
 ```
