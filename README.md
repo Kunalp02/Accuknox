@@ -69,6 +69,17 @@ uv sync --all-packages
 ./scripts/migrate.sh
 ```
 
+### Cursor Cloud Agent
+
+This repo includes `.cursor/environment.json` for [Cursor Cloud Agents](https://cursor.com/docs/cloud-agent/setup). A new agent with this environment will:
+
+1. **Build** — Ubuntu image with Docker, `uv`, and Node.js
+2. **Install** — `uv sync` + `npm ci`
+3. **Start** — Postgres, Redis, Qdrant, MinIO via Docker Compose + Alembic migrations
+4. **Terminals** — API (`8000`), worker, Vite (`5173`)
+
+Add `LLM_GATEWAY_URL` (and optional `LLM_GATEWAY_KEY`) as environment secrets for completed agent runs.
+
 ### Phase 2+ (this release)
 
 - **Workflows** — graph editor (React Flow), all node types: agent, supervisor, tool, branch, parallel, human
