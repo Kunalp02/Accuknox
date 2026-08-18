@@ -22,6 +22,7 @@ class AgentCreate(BaseModel):
     model: str | None = None
     temperature: float = Field(default=0.7, ge=0, le=2)
     knowledge_base_ids: list[str] = []
+    mcp_tools: list[dict] = []  # [{connection_id, tools: []}]
 
 
 class AgentUpdate(BaseModel):
@@ -31,6 +32,7 @@ class AgentUpdate(BaseModel):
     model: str | None = None
     temperature: float | None = Field(default=None, ge=0, le=2)
     knowledge_base_ids: list[str] | None = None
+    mcp_tools: list[dict] | None = None
 
 
 class AgentResponse(BaseModel):
@@ -43,6 +45,7 @@ class AgentResponse(BaseModel):
     is_published: bool
     version: int
     knowledge_base_ids: list[str]
+    mcp_tools: list[dict]
     created_at: datetime
     updated_at: datetime
 
@@ -52,6 +55,7 @@ class AgentResponse(BaseModel):
 
 def _agent_to_response(agent: Agent) -> AgentResponse:
     kb_ids = agent.config.get("knowledge_base_ids", [])
+    mcp_tools = agent.config.get("mcp_tools", [])
     return AgentResponse(
         id=str(agent.id),
         name=agent.name,
@@ -62,6 +66,7 @@ def _agent_to_response(agent: Agent) -> AgentResponse:
         is_published=agent.is_published,
         version=agent.version,
         knowledge_base_ids=kb_ids,
+        mcp_tools=mcp_tools,
         created_at=agent.created_at,
         updated_at=agent.updated_at,
     )
@@ -109,7 +114,7 @@ async def create_agent(
         system_prompt=body.system_prompt,
         model=body.model or settings.llm_default_model,
         temperature=body.temperature,
-        config={"knowledge_base_ids": body.knowledge_base_ids},
+        config={"knowledge_base_ids": body.knowledge_base_ids, "mcp_tools": body.mcp_tools},
     )
     session.add(agent)
     await session.commit()
@@ -160,6 +165,8 @@ async def update_agent(
         agent.temperature = body.temperature
     if body.knowledge_base_ids is not None:
         agent.config = {**agent.config, "knowledge_base_ids": body.knowledge_base_ids}
+    if body.mcp_tools is not None:
+        agent.config = {**agent.config, "mcp_tools": body.mcp_tools}
     agent.updated_at = datetime.now(timezone.utc)
 
     await session.commit()

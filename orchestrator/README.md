@@ -53,6 +53,12 @@ npm run dev
 
 Open http://localhost:5173
 
+### Phase 2+ (this release)
+
+- **Workflows** — graph editor (React Flow), all node types: agent, supervisor, tool, branch, parallel, human
+- **MCP HTTP** — hosted HTTP connections, tool discovery, agent tool binding
+- Workflow async invoke + human-in-the-loop resume (`POST /v1/runs/{id}/resume`)
+
 ## API overview
 
 | Endpoint | Description |

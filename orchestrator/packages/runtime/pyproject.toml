@@ -9,6 +9,7 @@ dependencies = [
     "orchestrator-core",
     "orchestrator-llm",
     "orchestrator-rag",
+    "orchestrator-mcp",
 ]
 
 [build-system]
@@ -22,3 +23,4 @@ packages = ["src/orchestrator_runtime"]
 orchestrator-core = { workspace = true }
 orchestrator-llm = { workspace = true }
 orchestrator-rag = { workspace = true }
+orchestrator-mcp = { workspace = true }

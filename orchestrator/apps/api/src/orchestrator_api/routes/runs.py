@@ -12,7 +12,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from orchestrator_core.config import settings
 from orchestrator_core.database import get_session
-from orchestrator_core.models import Agent, Run
+from orchestrator_core.models import Agent, Run, Workflow
 from orchestrator_core.rbac import has_permission
 from orchestrator_core.security import generate_api_key, hash_api_key
 
@@ -29,6 +29,10 @@ class InvokeRequest(BaseModel):
     webhook_url: HttpUrl | None = None
 
 
+class ResumeRequest(BaseModel):
+    input: str = Field(min_length=1)
+
+
 class InvokeResponse(BaseModel):
     run_id: str
     status: str
@@ -38,6 +42,7 @@ class RunResponse(BaseModel):
     id: str
     status: str
     agent_id: str | None
+    workflow_id: str | None
     input: dict
     output: dict | None
     error: str | None
@@ -69,6 +74,8 @@ def _check(auth: AuthContext, permission: str) -> None:
     if auth.is_api_key:
         if permission == "agent:invoke" and "agent:invoke" in auth.scopes:
             return
+        if permission == "workflow:invoke" and "workflow:invoke" in auth.scopes:
+            return
         if permission == "run:read":
             return
         raise HTTPException(status_code=403, detail="Insufficient API key scope")
@@ -76,11 +83,27 @@ def _check(auth: AuthContext, permission: str) -> None:
         raise HTTPException(status_code=403, detail="Permission denied")
 
 
-async def _enqueue_execute_agent(run_id: uuid.UUID) -> None:
+async def _enqueue_job(job_name: str, run_id: uuid.UUID) -> None:
     redis_settings = RedisSettings.from_dsn(settings.redis_url)
     pool = await create_pool(redis_settings)
-    await pool.enqueue_job("execute_agent_run", str(run_id))
+    await pool.enqueue_job(job_name, str(run_id))
     await pool.aclose()
+
+
+def _run_response(run: Run) -> RunResponse:
+    return RunResponse(
+        id=str(run.id),
+        status=run.status,
+        agent_id=str(run.agent_id) if run.agent_id else None,
+        workflow_id=str(run.workflow_id) if run.workflow_id else None,
+        input=run.input,
+        output=run.output,
+        error=run.error,
+        metrics=run.metrics,
+        created_at=run.created_at,
+        started_at=run.started_at,
+        completed_at=run.completed_at,
+    )
 
 
 @router.post("/agents/{agent_id}/invoke", response_model=InvokeResponse, status_code=202)
@@ -111,8 +134,63 @@ async def invoke_agent(
     await session.commit()
     await session.refresh(run)
 
-    await _enqueue_execute_agent(run.id)
+    await _enqueue_job("execute_agent_run", run.id)
 
+    return InvokeResponse(run_id=str(run.id), status=run.status)
+
+
+@router.post("/workflows/{workflow_id}/invoke", response_model=InvokeResponse, status_code=202)
+async def invoke_workflow(
+    workflow_id: uuid.UUID,
+    body: InvokeRequest,
+    auth: AuthContext = Depends(get_auth_context),
+    session: AsyncSession = Depends(get_session),
+):
+    _check(auth, "workflow:invoke")
+    result = await session.execute(
+        select(Workflow).where(Workflow.id == workflow_id, Workflow.organization_id == auth.org_id)
+    )
+    workflow = result.scalar_one_or_none()
+    if not workflow:
+        raise HTTPException(status_code=404, detail="Workflow not found")
+    if auth.is_api_key and not workflow.is_published:
+        raise HTTPException(status_code=403, detail="Workflow is not published")
+
+    run = Run(
+        organization_id=auth.org_id,
+        workflow_id=workflow.id,
+        status="pending",
+        input={"message": body.input, "context": body.context},
+        webhook_url=str(body.webhook_url) if body.webhook_url else None,
+    )
+    session.add(run)
+    await session.commit()
+    await session.refresh(run)
+    await _enqueue_job("execute_workflow_run", run.id)
+    return InvokeResponse(run_id=str(run.id), status=run.status)
+
+
+@router.post("/runs/{run_id}/resume", response_model=InvokeResponse, status_code=202)
+async def resume_run(
+    run_id: uuid.UUID,
+    body: ResumeRequest,
+    auth: AuthContext = Depends(get_auth_context),
+    session: AsyncSession = Depends(get_session),
+):
+    _check(auth, "workflow:invoke")
+    result = await session.execute(
+        select(Run).where(Run.id == run_id, Run.organization_id == auth.org_id)
+    )
+    run = result.scalar_one_or_none()
+    if not run:
+        raise HTTPException(status_code=404, detail="Run not found")
+    if run.status != "awaiting_input":
+        raise HTTPException(status_code=400, detail="Run is not awaiting input")
+
+    run.input = {**run.input, "human_response": body.input}
+    run.status = "pending"
+    await session.commit()
+    await _enqueue_job("resume_workflow_run", run.id)
     return InvokeResponse(run_id=str(run.id), status=run.status)
 
 
@@ -129,18 +207,7 @@ async def get_run(
     run = result.scalar_one_or_none()
     if not run:
         raise HTTPException(status_code=404, detail="Run not found")
-    return RunResponse(
-        id=str(run.id),
-        status=run.status,
-        agent_id=str(run.agent_id) if run.agent_id else None,
-        input=run.input,
-        output=run.output,
-        error=run.error,
-        metrics=run.metrics,
-        created_at=run.created_at,
-        started_at=run.started_at,
-        completed_at=run.completed_at,
-    )
+    return _run_response(run)
 
 
 @router.get("/runs")
@@ -157,21 +224,7 @@ async def list_runs(
         .limit(limit)
     )
     runs = result.scalars().all()
-    return [
-        RunResponse(
-            id=str(r.id),
-            status=r.status,
-            agent_id=str(r.agent_id) if r.agent_id else None,
-            input=r.input,
-            output=r.output,
-            error=r.error,
-            metrics=r.metrics,
-            created_at=r.created_at,
-            started_at=r.started_at,
-            completed_at=r.completed_at,
-        )
-        for r in runs
-    ]
+    return [_run_response(r) for r in runs]
 
 
 @router.get("/runs/{run_id}/events")
@@ -192,7 +245,7 @@ async def stream_run_events(
     async def event_generator():
         pubsub, client = await EventPublisher().subscribe(run_id)
         try:
-            if run.status in ("completed", "failed", "cancelled"):
+            if run.status in ("completed", "failed", "cancelled", "awaiting_input"):
                 yield f"data: {json.dumps({'type': 'run.status', 'data': {'status': run.status}})}\n\n"
                 if run.output:
                     yield f"data: {json.dumps({'type': 'run.completed', 'data': run.output})}\n\n"
@@ -211,7 +264,7 @@ async def stream_run_events(
                         break
                 await session.refresh(run)
                 refreshed = await session.get(Run, run_id)
-                if refreshed and refreshed.status in ("completed", "failed", "cancelled"):
+                if refreshed and refreshed.status in ("completed", "failed", "cancelled", "awaiting_input"):
                     if refreshed.status == "completed":
                         yield f"data: {json.dumps({'type': 'run.completed', 'data': refreshed.output})}\n\n"
                     else:

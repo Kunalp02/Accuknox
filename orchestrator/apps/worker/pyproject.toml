@@ -10,6 +10,7 @@ dependencies = [
     "orchestrator-rag",
     "orchestrator-runtime",
     "orchestrator-events",
+    "orchestrator-mcp",
 ]
 
 [build-system]
@@ -25,3 +26,4 @@ orchestrator-llm = { workspace = true }
 orchestrator-rag = { workspace = true }
 orchestrator-runtime = { workspace = true }
 orchestrator-events = { workspace = true }
+orchestrator-mcp = { workspace = true }

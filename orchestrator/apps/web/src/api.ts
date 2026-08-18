@@ -81,6 +81,30 @@ export const api = {
       body: JSON.stringify({ name, scopes: ["agent:invoke", "run:read"] }),
     }),
   listApiKeys: () => request<ApiKey[]>("/v1/api-keys"),
+  listWorkflows: () => request<Workflow[]>("/v1/workflows"),
+  createWorkflow: (data: { name: string; description?: string; graph?: WorkflowGraph }) =>
+    request<Workflow>("/v1/workflows", { method: "POST", body: JSON.stringify(data) }),
+  updateWorkflow: (id: string, data: Partial<Workflow>) =>
+    request<Workflow>(`/v1/workflows/${id}`, { method: "PATCH", body: JSON.stringify(data) }),
+  publishWorkflow: (id: string) =>
+    request<Workflow>(`/v1/workflows/${id}/publish`, { method: "POST" }),
+  invokeWorkflow: (id: string, input: string) =>
+    request<{ run_id: string; status: string }>(`/v1/workflows/${id}/invoke`, {
+      method: "POST",
+      body: JSON.stringify({ input }),
+    }),
+  resumeRun: (runId: string, input: string) =>
+    request<{ run_id: string; status: string }>(`/v1/runs/${runId}/resume`, {
+      method: "POST",
+      body: JSON.stringify({ input }),
+    }),
+  listMcpConnections: () => request<McpConnection[]>("/v1/mcp-connections"),
+  createMcpConnection: (data: Partial<McpConnection> & { auth_credentials?: string }) =>
+    request<McpConnection>("/v1/mcp-connections", { method: "POST", body: JSON.stringify(data) }),
+  testMcpConnection: (id: string) =>
+    request<McpConnection>(`/v1/mcp-connections/${id}/test`, { method: "POST" }),
+  deleteMcpConnection: (id: string) =>
+    request<void>(`/v1/mcp-connections/${id}`, { method: "DELETE" }),
 };
 
 export interface Agent {
@@ -93,13 +117,42 @@ export interface Agent {
   is_published: boolean;
   version: number;
   knowledge_base_ids: string[];
+  mcp_tools: Array<{ connection_id: string; tools: string[] }>;
+}
+
+export interface WorkflowGraph {
+  entry: string;
+  nodes: Array<Record<string, unknown>>;
+  edges: Array<{ from: string; to: string; condition?: string }>;
+}
+
+export interface Workflow {
+  id: string;
+  name: string;
+  description?: string;
+  graph: WorkflowGraph;
+  is_published: boolean;
+  version: number;
+}
+
+export interface McpConnection {
+  id: string;
+  name: string;
+  base_url: string;
+  auth_type?: string;
+  tool_allowlist: string[];
+  discovered_tools: Array<{ name: string; description?: string }>;
+  health_status: string;
+  last_error?: string;
+  auth_credentials?: string;
 }
 
 export interface Run {
   id: string;
   status: string;
   agent_id?: string;
-  input: { message?: string };
+  workflow_id?: string;
+  input: { message?: string; human_response?: string };
   output?: { message?: string };
   error?: string;
   metrics: Record<string, number>;

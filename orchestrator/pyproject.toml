@@ -10,6 +10,7 @@ members = [
     "packages/core",
     "packages/llm",
     "packages/rag",
+    "packages/mcp",
     "packages/runtime",
     "packages/events",
     "apps/api",

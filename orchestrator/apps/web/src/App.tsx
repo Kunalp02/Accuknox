@@ -5,6 +5,8 @@ import AgentsPage from "./pages/AgentsPage";
 import RunsPage from "./pages/RunsPage";
 import KnowledgePage from "./pages/KnowledgePage";
 import ApiKeysPage from "./pages/ApiKeysPage";
+import WorkflowsPage from "./pages/WorkflowsPage";
+import McpPage from "./pages/McpPage";
 import Layout from "./components/Layout";
 
 function AuthPage() {
@@ -116,6 +118,8 @@ export default function App() {
               <Routes>
                 <Route path="/" element={<Navigate to="/agents" replace />} />
                 <Route path="/agents" element={<AgentsPage />} />
+                <Route path="/workflows" element={<WorkflowsPage />} />
+                <Route path="/mcp" element={<McpPage />} />
                 <Route path="/runs" element={<RunsPage />} />
                 <Route path="/knowledge" element={<KnowledgePage />} />
                 <Route path="/api-keys" element={<ApiKeysPage />} />
