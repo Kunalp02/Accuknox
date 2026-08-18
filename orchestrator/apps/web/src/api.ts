@@ -114,6 +114,11 @@ export const api = {
     request<McpConnection>(`/v1/mcp-connections/${id}/test`, { method: "POST" }),
   deleteMcpConnection: (id: string) =>
     request<void>(`/v1/mcp-connections/${id}`, { method: "DELETE" }),
+  getGatewaySettings: () => request<GatewaySettings>("/v1/settings/llm-gateway"),
+  updateGatewaySettings: (data: GatewayUpdate) =>
+    request<GatewaySettings>("/v1/settings/llm-gateway", { method: "PUT", body: JSON.stringify(data) }),
+  clearGatewaySettings: () => request<void>("/v1/settings/llm-gateway", { method: "DELETE" }),
+  testGateway: () => request<Record<string, unknown>>("/v1/settings/llm-gateway/test", { method: "POST" }),
 };
 
 export interface Agent {
@@ -165,6 +170,26 @@ export interface Run {
   output?: { message?: string };
   error?: string;
   metrics: Record<string, number>;
+  trace?: Array<{ ts?: string; type: string; data: Record<string, unknown> }>;
+}
+
+export interface GatewaySettings {
+  uses_platform_default: boolean;
+  base_url?: string;
+  default_model?: string;
+  embed_model?: string;
+  allowed_models?: string[];
+  has_api_key?: boolean;
+  platform_default_model: string;
+  platform_embed_model: string;
+}
+
+export interface GatewayUpdate {
+  base_url: string;
+  default_model: string;
+  embed_model: string;
+  api_key?: string;
+  allowed_models?: string[];
 }
 
 export interface KnowledgeBase {

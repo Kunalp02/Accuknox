@@ -49,6 +49,7 @@ class RunResponse(BaseModel):
     output: dict | None
     error: str | None
     metrics: dict
+    trace: list
     created_at: datetime
     started_at: datetime | None
     completed_at: datetime | None
@@ -102,6 +103,7 @@ def _run_response(run: Run) -> RunResponse:
         output=run.output,
         error=run.error,
         metrics=run.metrics,
+        trace=run.trace or [],
         created_at=run.created_at,
         started_at=run.started_at,
         completed_at=run.completed_at,

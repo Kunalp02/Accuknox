@@ -204,6 +204,35 @@ label {
   color: var(--muted);
 }
 
+.trace-timeline {
+  max-height: 420px;
+  overflow-y: auto;
+}
+
+.trace-entry {
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 0.5rem 0.75rem;
+  margin-bottom: 0.5rem;
+}
+
+.trace-meta {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+  margin-bottom: 0.35rem;
+}
+
+.trace-data {
+  margin: 0;
+  font-family: "JetBrains Mono", monospace;
+  font-size: 0.72rem;
+  color: var(--muted);
+  white-space: pre-wrap;
+  max-height: 120px;
+  overflow-y: auto;
+}
+
 @media (max-width: 900px) {
   .layout {
     grid-template-columns: 1fr;

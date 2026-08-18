@@ -13,6 +13,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
           <NavLink className="nav-link" to="/runs">Runs</NavLink>
           <NavLink className="nav-link" to="/knowledge">Knowledge</NavLink>
           <NavLink className="nav-link" to="/api-keys">API Keys</NavLink>
+          <NavLink className="nav-link" to="/settings">Settings</NavLink>
         </nav>
         <button
           type="button"

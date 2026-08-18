@@ -7,6 +7,7 @@ import KnowledgePage from "./pages/KnowledgePage";
 import ApiKeysPage from "./pages/ApiKeysPage";
 import WorkflowsPage from "./pages/WorkflowsPage";
 import McpPage from "./pages/McpPage";
+import SettingsPage from "./pages/SettingsPage";
 import Layout from "./components/Layout";
 
 function AuthPage() {
@@ -123,6 +124,7 @@ export default function App() {
                 <Route path="/runs" element={<RunsPage />} />
                 <Route path="/knowledge" element={<KnowledgePage />} />
                 <Route path="/api-keys" element={<ApiKeysPage />} />
+                <Route path="/settings" element={<SettingsPage />} />
               </Routes>
             </Layout>
           </PrivateRoute>

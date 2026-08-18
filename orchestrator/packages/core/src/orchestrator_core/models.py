@@ -112,6 +112,7 @@ class Run(Base):
     error: Mapped[str | None] = mapped_column(Text, nullable=True)
     metrics: Mapped[dict] = mapped_column(JSONB, default=dict)
     checkpoint_data: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
+    trace: Mapped[list] = mapped_column(JSONB, default=list)
     webhook_url: Mapped[str | None] = mapped_column(String(500), nullable=True)
     webhook_secret_encrypted: Mapped[str | None] = mapped_column(Text, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)

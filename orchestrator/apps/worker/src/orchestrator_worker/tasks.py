@@ -7,7 +7,8 @@ from orchestrator_core.config import settings
 from orchestrator_core.database import async_session_factory
 from orchestrator_core.models import Agent, Document, Run, Workflow
 from orchestrator_events.publisher import EventPublisher
-from orchestrator_llm.client import embed_texts, platform_gateway_config, create_openai_client
+from orchestrator_llm.client import create_openai_client, embed_texts
+from orchestrator_llm.gateway import get_gateway_for_org
 from orchestrator_rag.chunking import chunk_text
 from orchestrator_rag.qdrant import QdrantStore
 from orchestrator_runtime.agent import execute_agent
@@ -44,6 +45,24 @@ async def _finalize_run(session, run: Run, status: str) -> None:
     await record_run_usage(session, run.organization_id, run.metrics or {}, status)
 
 
+async def _append_trace(session, run: Run, event_type: str, data: dict) -> None:
+    entry = {
+        "ts": datetime.now(timezone.utc).isoformat(),
+        "type": event_type,
+        "data": data,
+    }
+    run.trace = list(run.trace or []) + [entry]
+
+
+def _make_on_event(publisher, run_uuid: uuid.UUID, session, run: Run):
+    async def on_event(event_type: str, data: dict) -> None:
+        await publisher.publish(run_uuid, event_type, data)
+        await _append_trace(session, run, event_type, data)
+        await session.commit()
+
+    return on_event
+
+
 async def execute_agent_run(ctx: dict, run_id: str) -> None:
     run_uuid = uuid.UUID(run_id)
     publisher = EventPublisher()
@@ -68,13 +87,12 @@ async def execute_agent_run(ctx: dict, run_id: str) -> None:
             await publisher.publish(run_uuid, "run.failed", {"error": run.error})
             return
 
-        gateway = platform_gateway_config()
+        gateway = await get_gateway_for_org(session, run.organization_id)
         agent_cfg = await build_agent_config(session, agent)
         mcp_clients = await load_mcp_clients(session, run.organization_id)
         user_input = run.input.get("message", "")
 
-        async def on_event(event_type: str, data: dict) -> None:
-            await publisher.publish(run_uuid, event_type, data)
+        on_event = _make_on_event(publisher, run_uuid, session, run)
 
         try:
             result = await execute_agent(
@@ -131,15 +149,14 @@ async def execute_workflow_run(ctx: dict, run_id: str) -> None:
         await session.commit()
         await publisher.publish(run_uuid, "run.status", {"status": "running"})
 
-        gateway = platform_gateway_config()
+        gateway = await get_gateway_for_org(session, run.organization_id)
         graph = workflow.graph or {}
         agents = await build_workflow_agent_map(session, run.organization_id, graph)
         mcp_clients = await load_mcp_clients(session, run.organization_id)
         user_input = run.input.get("message", "")
         context = run.input.get("context", {})
 
-        async def on_event(event_type: str, data: dict) -> None:
-            await publisher.publish(run_uuid, event_type, data)
+        on_event = _make_on_event(publisher, run_uuid, session, run)
 
         try:
             state, metrics = await execute_workflow(
@@ -210,14 +227,13 @@ async def resume_workflow_run(ctx: dict, run_id: str) -> None:
         else:
             next_id = None
 
-        gateway = platform_gateway_config()
+        gateway = await get_gateway_for_org(session, run.organization_id)
         graph = workflow.graph or {}
         agents = await build_workflow_agent_map(session, run.organization_id, graph)
         mcp_clients = await load_mcp_clients(session, run.organization_id)
         context = run.input.get("context", {})
 
-        async def on_event(event_type: str, data: dict) -> None:
-            await publisher.publish(run_uuid, event_type, data)
+        on_event = _make_on_event(publisher, run_uuid, session, run)
 
         try:
             state, metrics = await execute_workflow(
@@ -260,13 +276,14 @@ async def resume_workflow_run(ctx: dict, run_id: str) -> None:
 
 async def index_document(ctx: dict, document_id: str) -> None:
     doc_uuid = uuid.UUID(document_id)
-    gateway = platform_gateway_config()
-    client = create_openai_client(gateway)
 
     async with async_session_factory() as session:
         doc = await session.get(Document, doc_uuid)
         if not doc:
             return
+
+        gateway = await get_gateway_for_org(session, doc.organization_id)
+        client = create_openai_client(gateway)
 
         doc.status = "indexing"
         await session.commit()
