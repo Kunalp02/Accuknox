@@ -2,18 +2,18 @@ from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-
 from orchestrator_core.config import settings
 from orchestrator_core.database import init_db
 
-from orchestrator_api.routes.auth import router as auth_router
 from orchestrator_api.routes.agents import router as agents_router
-from orchestrator_api.routes.runs import router as runs_router, api_keys_router
+from orchestrator_api.routes.auth import router as auth_router
 from orchestrator_api.routes.knowledge import router as knowledge_router
-from orchestrator_api.routes.workflows import router as workflows_router
 from orchestrator_api.routes.mcp import router as mcp_router
-from orchestrator_api.routes.usage import router as usage_router
+from orchestrator_api.routes.runs import api_keys_router
+from orchestrator_api.routes.runs import router as runs_router
 from orchestrator_api.routes.settings import router as settings_router
+from orchestrator_api.routes.usage import router as usage_router
+from orchestrator_api.routes.workflows import router as workflows_router
 
 
 @asynccontextmanager

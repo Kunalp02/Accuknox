@@ -1,4 +1,10 @@
 import type { Agent, McpConnection } from "../api";
+import { Badge } from "./ui/badge";
+import { Button } from "./ui/button";
+import { Field } from "./ui/label";
+import { Input } from "./ui/input";
+import { Textarea } from "./ui/textarea";
+import { Select } from "./ui/select";
 
 export type WorkflowNodeData = Record<string, unknown> & {
   id: string;
@@ -44,16 +50,15 @@ export function NodeConfigPanel({
   const set = (patch: Partial<WorkflowNodeData>) => onChange({ ...node, ...patch });
 
   return (
-    <div className="stack" style={{ fontSize: "0.9rem" }}>
-      <div style={{ display: "flex", gap: "0.5rem", alignItems: "center" }}>
-        <span className="badge">{node.type}</span>
-        <span className="mono">{node.id}</span>
+    <div className="space-y-4 text-sm">
+      <div className="flex items-center gap-2">
+        <Badge variant="primary">{node.type}</Badge>
+        <span className="font-mono text-xs text-gray-500">{node.id}</span>
       </div>
 
       {node.type === "agent" && (
-        <div className="field">
-          <label>Agent</label>
-          <select
+        <Field label="Agent">
+          <Select
             value={(node.agent_id as string) || ""}
             onChange={(e) => set({ agent_id: e.target.value })}
           >
@@ -61,58 +66,57 @@ export function NodeConfigPanel({
             {agents.map((a) => (
               <option key={a.id} value={a.id}>{a.name}</option>
             ))}
-          </select>
-        </div>
+          </Select>
+        </Field>
       )}
 
       {node.type === "supervisor" && (
         <>
-          <div className="field">
-            <label>Routing prompt (optional)</label>
-            <textarea
+          <Field label="Routing prompt (optional)">
+            <Textarea
               rows={3}
               value={(node.system_prompt as string) || ""}
               onChange={(e) => set({ system_prompt: e.target.value })}
               placeholder="You are a supervisor. Route to the best child node id…"
             />
-          </div>
-          <div className="field">
-            <label>Model (optional)</label>
-            <input
+          </Field>
+          <Field label="Model (optional)">
+            <Input
               value={(node.model as string) || ""}
               onChange={(e) => set({ model: e.target.value })}
               placeholder="llama3.2"
             />
-          </div>
-          <div className="field">
-            <label>Child nodes (routing targets)</label>
-            {nodeIds
-              .filter((id) => id !== node.id)
-              .map((id) => (
-                <label key={id} style={{ display: "flex", gap: "0.5rem", alignItems: "center" }}>
-                  <input
-                    type="checkbox"
-                    checked={((node.children as string[]) || []).includes(id)}
-                    onChange={(e) => {
-                      const cur = (node.children as string[]) || [];
-                      const children = e.target.checked
-                        ? [...cur, id]
-                        : cur.filter((c) => c !== id);
-                      set({ children });
-                    }}
-                  />
-                  <span className="mono">{id}</span>
-                </label>
-              ))}
-          </div>
+          </Field>
+          <Field label="Child nodes (routing targets)">
+            <div className="space-y-2">
+              {nodeIds
+                .filter((id) => id !== node.id)
+                .map((id) => (
+                  <label key={id} className="flex items-center gap-2 text-gray-700">
+                    <input
+                      type="checkbox"
+                      checked={((node.children as string[]) || []).includes(id)}
+                      onChange={(e) => {
+                        const cur = (node.children as string[]) || [];
+                        const children = e.target.checked
+                          ? [...cur, id]
+                          : cur.filter((c) => c !== id);
+                        set({ children });
+                      }}
+                      className="rounded border-gray-300 text-primary focus:ring-primary"
+                    />
+                    <span className="font-mono text-xs">{id}</span>
+                  </label>
+                ))}
+            </div>
+          </Field>
         </>
       )}
 
       {node.type === "tool" && (
         <>
-          <div className="field">
-            <label>MCP connection</label>
-            <select
+          <Field label="MCP connection">
+            <Select
               value={(node.connection_id as string) || ""}
               onChange={(e) => set({ connection_id: e.target.value, tool_name: "" })}
             >
@@ -120,11 +124,10 @@ export function NodeConfigPanel({
               {mcpConnections.map((c) => (
                 <option key={c.id} value={c.id}>{c.name}</option>
               ))}
-            </select>
-          </div>
-          <div className="field">
-            <label>Tool</label>
-            <select
+            </Select>
+          </Field>
+          <Field label="Tool">
+            <Select
               value={(node.tool_name as string) || ""}
               onChange={(e) => set({ tool_name: e.target.value })}
             >
@@ -135,11 +138,10 @@ export function NodeConfigPanel({
                 .map((t) => (
                   <option key={t.name} value={t.name}>{t.name}</option>
                 ))}
-            </select>
-          </div>
-          <div className="field">
-            <label>Arguments (JSON, use $input or $variable)</label>
-            <textarea
+            </Select>
+          </Field>
+          <Field label="Arguments (JSON, use $input or $variable)">
+            <Textarea
               rows={3}
               value={JSON.stringify(node.arguments || {}, null, 2)}
               onChange={(e) => {
@@ -150,18 +152,18 @@ export function NodeConfigPanel({
                 }
               }}
             />
-          </div>
+          </Field>
         </>
       )}
 
       {node.type === "branch" && (
         <>
-          <p style={{ color: "var(--muted)", margin: 0, fontSize: "0.8rem" }}>
+          <p className="text-xs text-gray-500">
             Conditions: route == value, variables.key == value, or true
           </p>
           {((node.branches as Array<{ condition?: string; to?: string }>) || []).map((b, i) => (
-            <div key={i} style={{ display: "flex", gap: "0.5rem" }}>
-              <input
+            <div key={i} className="flex gap-2">
+              <Input
                 placeholder="condition"
                 value={b.condition || ""}
                 onChange={(e) => {
@@ -170,7 +172,7 @@ export function NodeConfigPanel({
                   set({ branches });
                 }}
               />
-              <select
+              <Select
                 value={b.to || ""}
                 onChange={(e) => {
                   const branches = [...((node.branches as Array<{ condition?: string; to?: string }>) || [])];
@@ -182,12 +184,13 @@ export function NodeConfigPanel({
                 {nodeIds.filter((id) => id !== node.id).map((id) => (
                   <option key={id} value={id}>{id}</option>
                 ))}
-              </select>
+              </Select>
             </div>
           ))}
-          <button
+          <Button
             type="button"
-            className="secondary"
+            variant="secondary"
+            size="sm"
             onClick={() =>
               set({
                 branches: [
@@ -198,10 +201,9 @@ export function NodeConfigPanel({
             }
           >
             Add branch
-          </button>
-          <div className="field">
-            <label>Default (if no match)</label>
-            <select
+          </Button>
+          <Field label="Default (if no match)">
+            <Select
               value={(node.default_to as string) || ""}
               onChange={(e) => set({ default_to: e.target.value })}
             >
@@ -209,43 +211,44 @@ export function NodeConfigPanel({
               {nodeIds.filter((id) => id !== node.id).map((id) => (
                 <option key={id} value={id}>{id}</option>
               ))}
-            </select>
-          </div>
+            </Select>
+          </Field>
         </>
       )}
 
       {node.type === "parallel" && (
-        <div className="field">
-          <label>Parallel branch entry nodes</label>
-          {nodeIds
-            .filter((id) => id !== node.id)
-            .map((id) => (
-              <label key={id} style={{ display: "flex", gap: "0.5rem", alignItems: "center" }}>
-                <input
-                  type="checkbox"
-                  checked={((node.branches as string[]) || []).includes(id)}
-                  onChange={(e) => {
-                    const cur = (node.branches as string[]) || [];
-                    const branches = e.target.checked ? [...cur, id] : cur.filter((c) => c !== id);
-                    set({ branches });
-                  }}
-                />
-                <span className="mono">{id}</span>
-              </label>
-            ))}
-        </div>
+        <Field label="Parallel branch entry nodes">
+          <div className="space-y-2">
+            {nodeIds
+              .filter((id) => id !== node.id)
+              .map((id) => (
+                <label key={id} className="flex items-center gap-2 text-gray-700">
+                  <input
+                    type="checkbox"
+                    checked={((node.branches as string[]) || []).includes(id)}
+                    onChange={(e) => {
+                      const cur = (node.branches as string[]) || [];
+                      const branches = e.target.checked ? [...cur, id] : cur.filter((c) => c !== id);
+                      set({ branches });
+                    }}
+                    className="rounded border-gray-300 text-primary focus:ring-primary"
+                  />
+                  <span className="font-mono text-xs">{id}</span>
+                </label>
+              ))}
+          </div>
+        </Field>
       )}
 
       {node.type === "human" && (
-        <div className="field">
-          <label>Prompt for human</label>
-          <textarea
+        <Field label="Prompt for human">
+          <Textarea
             rows={3}
             value={(node.prompt as string) || ""}
             onChange={(e) => set({ prompt: e.target.value })}
             placeholder="Approve this output?"
           />
-        </div>
+        </Field>
       )}
     </div>
   );

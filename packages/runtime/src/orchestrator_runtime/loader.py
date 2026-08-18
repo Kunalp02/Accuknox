@@ -2,12 +2,12 @@
 
 import uuid
 
-from sqlalchemy import select
-from sqlalchemy.ext.asyncio import AsyncSession
-
 from orchestrator_core.models import Agent, McpConnection
 from orchestrator_core.security import decrypt_secret
 from orchestrator_mcp.client import McpAuth, McpHttpClient
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
+
 from orchestrator_runtime.agent import AgentConfig, McpToolBinding
 
 

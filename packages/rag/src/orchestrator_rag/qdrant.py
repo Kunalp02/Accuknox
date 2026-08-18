@@ -1,6 +1,7 @@
 import hashlib
 import uuid
 
+from orchestrator_core.config import settings
 from qdrant_client import AsyncQdrantClient
 from qdrant_client.models import (
     Distance,
@@ -11,8 +12,6 @@ from qdrant_client.models import (
     PointStruct,
     VectorParams,
 )
-
-from orchestrator_core.config import settings
 
 
 def org_collection_name(org_id: uuid.UUID) -> str:

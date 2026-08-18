@@ -1,15 +1,13 @@
 import re
 
 from fastapi import APIRouter, Depends, HTTPException
-from pydantic import BaseModel, EmailStr, Field
-from sqlalchemy import select
-from sqlalchemy.ext.asyncio import AsyncSession
-
+from orchestrator_api.deps import AuthContext, get_auth_context
 from orchestrator_core.database import get_session
 from orchestrator_core.models import Organization, User
 from orchestrator_core.security import create_access_token, hash_password, verify_password
-
-from orchestrator_api.deps import AuthContext, get_auth_context
+from pydantic import BaseModel, EmailStr, Field
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 

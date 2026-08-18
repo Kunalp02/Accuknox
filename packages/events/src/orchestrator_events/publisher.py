@@ -3,7 +3,6 @@ import uuid
 from typing import Any
 
 import redis.asyncio as redis
-
 from orchestrator_core.config import settings
 
 

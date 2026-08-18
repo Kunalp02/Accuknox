@@ -1,24 +1,22 @@
 import json
 import uuid
-from datetime import datetime, timezone
+from datetime import datetime
 
 from arq import create_pool
 from arq.connections import RedisSettings
 from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import StreamingResponse
-from pydantic import BaseModel, Field, HttpUrl
-from sqlalchemy import select
-from sqlalchemy.ext.asyncio import AsyncSession
-
+from orchestrator_api.deps import AuthContext, get_auth_context
+from orchestrator_api.guards import check_resource_scope, enforce_rate_limit
 from orchestrator_core.config import settings
 from orchestrator_core.database import get_session
 from orchestrator_core.models import Agent, Run, Workflow
 from orchestrator_core.rbac import has_permission
-from orchestrator_core.security import generate_api_key, hash_api_key, encrypt_secret
-
-from orchestrator_api.deps import AuthContext, get_auth_context
-from orchestrator_api.guards import check_resource_scope, enforce_rate_limit
+from orchestrator_core.security import encrypt_secret, generate_api_key
 from orchestrator_events.publisher import EventPublisher
+from pydantic import BaseModel, Field, HttpUrl
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
 
 router = APIRouter(tags=["runs"])
 api_keys_router = APIRouter(prefix="/api-keys", tags=["api-keys"])
@@ -354,3 +352,26 @@ async def list_api_keys(
         )
         for k in keys
     ]
+
+
+@api_keys_router.delete("/{key_id}", status_code=204)
+async def revoke_api_key(
+    key_id: uuid.UUID,
+    auth: AuthContext = Depends(get_auth_context),
+    session: AsyncSession = Depends(get_session),
+):
+    if auth.is_api_key:
+        raise HTTPException(status_code=403, detail="Not allowed")
+    if not auth.role or not has_permission(auth.role, "api_key:write"):
+        raise HTTPException(status_code=403, detail="Permission denied")
+
+    from orchestrator_core.models import ApiKey
+
+    result = await session.execute(
+        select(ApiKey).where(ApiKey.id == key_id, ApiKey.organization_id == auth.org_id)
+    )
+    api_key = result.scalar_one_or_none()
+    if not api_key:
+        raise HTTPException(status_code=404, detail="API key not found")
+    api_key.is_active = False
+    await session.commit()

@@ -1,22 +1,19 @@
-import uuid
 
 from fastapi import APIRouter, Depends, HTTPException
 from openai import AsyncOpenAI
-from pydantic import BaseModel, Field
-from sqlalchemy.ext.asyncio import AsyncSession
-
+from orchestrator_api.deps import AuthContext, get_auth_context
 from orchestrator_core.config import settings
 from orchestrator_core.database import get_session
 from orchestrator_core.models import LlmGatewayConfig
 from orchestrator_core.rbac import has_permission
-from sqlalchemy import select
-
-from orchestrator_api.deps import AuthContext, get_auth_context
 from orchestrator_llm.gateway import (
     delete_gateway_config,
     get_gateway_for_org,
     upsert_gateway_config,
 )
+from pydantic import BaseModel, Field
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
 
 router = APIRouter(prefix="/settings", tags=["settings"])
 

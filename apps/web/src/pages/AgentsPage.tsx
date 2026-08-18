@@ -1,5 +1,14 @@
 import { useEffect, useState } from "react";
+import { Plus, Send, Trash2 } from "lucide-react";
 import { api, Agent, McpConnection, streamRunEvents, KnowledgeBase } from "../api";
+import { PageHeader } from "../components/ui/page-header";
+import { Card, CardHeader } from "../components/ui/card";
+import { Button } from "../components/ui/button";
+import { Badge } from "../components/ui/badge";
+import { Field } from "../components/ui/label";
+import { Input } from "../components/ui/input";
+import { Textarea } from "../components/ui/textarea";
+import { cn } from "../lib/cn";
 
 type McpToolEntry = { connection_id: string; tools: string[] };
 
@@ -18,6 +27,8 @@ export default function AgentsPage() {
     mcp_tools: [] as McpToolEntry[],
   });
   const [testInput, setTestInput] = useState("");
+  const [webhookUrl, setWebhookUrl] = useState("");
+  const [webhookSecret, setWebhookSecret] = useState("");
   const [output, setOutput] = useState("");
   const [events, setEvents] = useState<string[]>([]);
   const [running, setRunning] = useState(false);
@@ -82,6 +93,14 @@ export default function AgentsPage() {
     await load();
   };
 
+  const deleteSelected = async () => {
+    if (!selected || !confirm(`Delete agent "${selected.name}"?`)) return;
+    await api.deleteAgent(selected.id);
+    setSelected(null);
+    setForm(resetForm());
+    await load();
+  };
+
   const toggleMcpTool = (connectionId: string, toolName: string, checked: boolean) => {
     const existing = form.mcp_tools.find((e) => e.connection_id === connectionId);
     let mcp_tools: McpToolEntry[];
@@ -112,7 +131,11 @@ export default function AgentsPage() {
     setOutput("");
     setEvents([]);
     try {
-      const { run_id } = await api.invokeAgent(selected.id, testInput);
+      const { run_id } = await api.invokeAgent(selected.id, {
+        input: testInput,
+        webhook_url: webhookUrl.trim() || undefined,
+        webhook_secret: webhookSecret.trim() || undefined,
+      });
       setEvents((e) => [...e, `run started: ${run_id}`]);
       const stop = streamRunEvents(run_id, (type, data) => {
         setEvents((e) => [...e, `${type}: ${JSON.stringify(data)}`]);
@@ -142,71 +165,73 @@ export default function AgentsPage() {
     }
   };
 
-  const apiEndpoint = selected
-    ? `${window.location.origin}/v1/agents/${selected.id}/invoke`
-    : "";
+  const apiEndpoint = selected ? `${window.location.origin}/v1/agents/${selected.id}/invoke` : "";
 
   return (
-    <div className="stack">
-      <h2 style={{ margin: 0 }}>Agents</h2>
-      <p style={{ color: "var(--muted)", margin: 0 }}>
-        Build a single agent, publish it, and expose it as an async API product.
-      </p>
-      <div className="grid-2">
-        <div className="card stack">
-          <h3 style={{ margin: 0 }}>Your agents</h3>
-          {agents.map((a) => (
-            <button
-              key={a.id}
-              type="button"
-              className="secondary"
-              onClick={() => select(a)}
-              style={{
-                textAlign: "left",
-                borderColor: selected?.id === a.id ? "var(--accent)" : undefined,
-              }}
-            >
-              {a.name}{" "}
-              <span className={`badge ${a.is_published ? "success" : ""}`}>
-                {a.is_published ? `v${a.version}` : "draft"}
-              </span>
-            </button>
-          ))}
-          <hr style={{ border: "none", borderTop: "1px solid var(--border)" }} />
-          <h4 style={{ margin: 0 }}>New agent</h4>
-          <div className="field">
-            <label>Name</label>
-            <input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} />
-          </div>
-          <button type="button" onClick={create} disabled={!form.name}>Create</button>
-        </div>
+    <div>
+      <PageHeader
+        title="Agents"
+        description="Build a single agent, publish it, and expose it as an async API product."
+      />
 
-        <div className="card stack">
+      <div className="grid gap-5 lg:grid-cols-[280px_1fr_320px]">
+        <Card>
+          <CardHeader title="Your agents" />
+          <div className="space-y-1">
+            {agents.map((a) => (
+              <button
+                key={a.id}
+                type="button"
+                onClick={() => select(a)}
+                className={cn(
+                  "flex w-full items-center justify-between rounded-lg px-3 py-2.5 text-left text-sm transition-colors",
+                  selected?.id === a.id
+                    ? "bg-primary-subtle text-primary"
+                    : "text-gray-700 hover:bg-gray-50"
+                )}
+              >
+                <span className="font-medium">{a.name}</span>
+                <Badge variant={a.is_published ? "success" : "default"}>
+                  {a.is_published ? `v${a.version}` : "draft"}
+                </Badge>
+              </button>
+            ))}
+          </div>
+
+          <div className="mt-6 border-t border-border pt-5 space-y-3">
+            <h4 className="text-sm font-semibold text-gray-900">New agent</h4>
+            <Field label="Name">
+              <Input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} />
+            </Field>
+            <Button type="button" onClick={create} disabled={!form.name} size="sm">
+              <Plus className="h-4 w-4" />
+              Create
+            </Button>
+          </div>
+        </Card>
+
+        <Card>
           {selected ? (
-            <>
-              <h3 style={{ margin: 0 }}>Edit: {selected.name}</h3>
-              <div className="field">
-                <label>Description</label>
-                <input
+            <div className="space-y-4">
+              <CardHeader title={`Edit: ${selected.name}`} />
+              <Field label="Description">
+                <Input
                   value={form.description}
                   onChange={(e) => setForm({ ...form, description: e.target.value })}
                   placeholder="What this agent does"
                 />
-              </div>
-              <div className="field">
-                <label>System prompt</label>
-                <textarea
+              </Field>
+              <Field label="System prompt">
+                <Textarea
                   rows={4}
                   value={form.system_prompt}
                   onChange={(e) => setForm({ ...form, system_prompt: e.target.value })}
                 />
-              </div>
-              <div className="field">
-                <label>Model</label>
-                <input value={form.model} onChange={(e) => setForm({ ...form, model: e.target.value })} />
-              </div>
-              <div className="field">
-                <label>Temperature ({form.temperature})</label>
+              </Field>
+              <Field label="Model">
+                <Input value={form.model} onChange={(e) => setForm({ ...form, model: e.target.value })} />
+              </Field>
+              <Field label={`Temperature (${form.temperature})`}>
                 <input
                   type="range"
                   min={0}
@@ -214,66 +239,80 @@ export default function AgentsPage() {
                   step={0.1}
                   value={form.temperature}
                   onChange={(e) => setForm({ ...form, temperature: Number(e.target.value) })}
+                  className="w-full accent-primary"
                 />
-              </div>
+              </Field>
               {kbs.length > 0 && (
-                <div className="field">
-                  <label>Knowledge bases</label>
-                  {kbs.map((kb) => (
-                    <label key={kb.id} style={{ display: "flex", gap: "0.5rem", alignItems: "center" }}>
-                      <input
-                        type="checkbox"
-                        checked={form.knowledge_base_ids.includes(kb.id)}
-                        onChange={(e) => {
-                          const ids = e.target.checked
-                            ? [...form.knowledge_base_ids, kb.id]
-                            : form.knowledge_base_ids.filter((id) => id !== kb.id);
-                          setForm({ ...form, knowledge_base_ids: ids });
-                        }}
-                      />
-                      {kb.name}
-                    </label>
-                  ))}
-                </div>
+                <Field label="Knowledge bases">
+                  <div className="space-y-2">
+                    {kbs.map((kb) => (
+                      <label key={kb.id} className="flex items-center gap-2 text-sm text-gray-700">
+                        <input
+                          type="checkbox"
+                          checked={form.knowledge_base_ids.includes(kb.id)}
+                          onChange={(e) => {
+                            const ids = e.target.checked
+                              ? [...form.knowledge_base_ids, kb.id]
+                              : form.knowledge_base_ids.filter((id) => id !== kb.id);
+                            setForm({ ...form, knowledge_base_ids: ids });
+                          }}
+                          className="rounded border-gray-300 text-primary focus:ring-primary"
+                        />
+                        {kb.name}
+                      </label>
+                    ))}
+                  </div>
+                </Field>
               )}
               {mcpConnections.some((c) => c.discovered_tools?.length) && (
-                <div className="field">
-                  <label>MCP tools</label>
+                <Field label="MCP tools">
                   {mcpConnections.map((conn) =>
                     conn.discovered_tools?.length ? (
-                      <div key={conn.id} style={{ marginBottom: "0.5rem" }}>
-                        <strong style={{ fontSize: "0.85rem" }}>{conn.name}</strong>
+                      <div key={conn.id} className="mb-2">
+                        <p className="text-xs font-semibold text-gray-500">{conn.name}</p>
                         {conn.discovered_tools.map((tool) => (
                           <label
                             key={tool.name}
-                            style={{ display: "flex", gap: "0.5rem", alignItems: "center", marginTop: "0.25rem" }}
+                            className="flex items-center gap-2 mt-1 text-sm text-gray-700"
                           >
                             <input
                               type="checkbox"
                               checked={isToolChecked(conn.id, tool.name)}
                               onChange={(e) => toggleMcpTool(conn.id, tool.name, e.target.checked)}
+                              className="rounded border-gray-300 text-primary focus:ring-primary"
                             />
-                            <span className="mono">{tool.name}</span>
+                            <span className="font-mono text-xs">{tool.name}</span>
                           </label>
                         ))}
                       </div>
                     ) : null
                   )}
-                </div>
+                </Field>
               )}
-              <div style={{ display: "flex", gap: "0.5rem" }}>
-                <button type="button" onClick={save}>Save</button>
-                <button type="button" className="secondary" onClick={publish}>Publish</button>
+              <div className="flex gap-2">
+                <Button type="button" onClick={save}>Save</Button>
+                <Button type="button" variant="secondary" onClick={publish}>Publish</Button>
+                <Button type="button" variant="danger" size="sm" onClick={deleteSelected}>
+                  <Trash2 className="h-4 w-4" />
+                </Button>
               </div>
+            </div>
+          ) : (
+            <p className="text-sm text-gray-500">Select an agent to edit</p>
+          )}
+        </Card>
+
+        <Card>
+          {selected ? (
+            <div className="space-y-4">
               {selected.is_published && (
-                <div style={{ padding: "1rem", background: "var(--bg)", borderRadius: 8 }}>
-                  <h4 style={{ margin: "0 0 0.5rem" }}>API endpoint</h4>
-                  <p className="mono" style={{ margin: 0, fontSize: "0.85rem" }}>POST {apiEndpoint}</p>
-                  <p style={{ color: "var(--muted)", margin: "0.5rem 0 0", fontSize: "0.85rem" }}>
-                    Returns <span className="mono">202</span> with <span className="mono">run_id</span>.
-                    Use API key header <span className="mono">X-API-Key</span> or Bearer.
+                <div className="rounded-lg bg-gray-50 p-4 space-y-2">
+                  <h4 className="text-sm font-semibold text-gray-900">API endpoint</h4>
+                  <p className="font-mono text-xs text-gray-600">POST {apiEndpoint}</p>
+                  <p className="text-xs text-gray-500">
+                    Returns 202 with run_id. Use X-API-Key or Bearer auth.
                   </p>
-                  <pre className="mono" style={{ fontSize: "0.75rem", marginTop: "0.5rem", color: "var(--muted)" }}>
+                  <pre className="font-mono text-[11px] text-gray-500 overflow-x-auto">
 {`curl -X POST ${apiEndpoint} \\
   -H "X-API-Key: oak_..." \\
   -H "Content-Type: application/json" \\
@@ -281,24 +320,46 @@ export default function AgentsPage() {
                   </pre>
                 </div>
               )}
-              <hr style={{ border: "none", borderTop: "1px solid var(--border)" }} />
-              <h4 style={{ margin: 0 }}>Test invoke (async)</h4>
-              <textarea
+
+              <CardHeader title="Test invoke" description="Async — response streams via SSE" />
+              <Textarea
                 rows={3}
                 placeholder="Message..."
                 value={testInput}
                 onChange={(e) => setTestInput(e.target.value)}
               />
-              <button type="button" onClick={invoke} disabled={running}>
+              <Field label="Webhook URL (optional)">
+                <Input
+                  value={webhookUrl}
+                  onChange={(e) => setWebhookUrl(e.target.value)}
+                  placeholder="https://hooks.example.com/run-complete"
+                />
+              </Field>
+              <Field label="Webhook secret (optional, for HMAC signing)">
+                <Input
+                  type="password"
+                  value={webhookSecret}
+                  onChange={(e) => setWebhookSecret(e.target.value)}
+                  placeholder="whsec_..."
+                />
+              </Field>
+              <Button type="button" onClick={invoke} disabled={running}>
+                <Send className="h-4 w-4" />
                 {running ? "Running..." : "Invoke"}
-              </button>
-              <div className="chat-output">{output || "Response will appear here..."}</div>
-              <div className="events-log">{events.join("\n")}</div>
-            </>
+              </Button>
+              <div className="min-h-[120px] rounded-lg border border-border bg-gray-50 p-3 text-sm whitespace-pre-wrap">
+                {output || "Response will appear here..."}
+              </div>
+              {events.length > 0 && (
+                <pre className="font-mono text-[11px] text-gray-400 max-h-32 overflow-y-auto">
+                  {events.join("\n")}
+                </pre>
+              )}
+            </div>
           ) : (
-            <p style={{ color: "var(--muted)" }}>Select an agent to edit and test</p>
+            <p className="text-sm text-gray-500">Select an agent to test</p>
           )}
-        </div>
+        </Card>
       </div>
     </div>
   );

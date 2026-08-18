@@ -25,7 +25,16 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
   const res = await fetch(`${API_BASE}${path}`, { ...options, headers });
   if (!res.ok) {
     const err = await res.json().catch(() => ({ detail: res.statusText }));
-    throw new Error(err.detail || "Request failed");
+    const detail = err.detail;
+    const message =
+      typeof detail === "string"
+        ? detail
+        : Array.isArray(detail)
+          ? detail.map((d: { msg?: string }) => d.msg || JSON.stringify(d)).join("; ")
+          : detail && typeof detail === "object"
+            ? JSON.stringify(detail)
+            : "Request failed";
+    throw new Error(message);
   }
   if (res.status === 204) return undefined as T;
   return res.json();
@@ -48,12 +57,15 @@ export const api = {
     request<Agent>("/v1/agents", { method: "POST", body: JSON.stringify(data) }),
   updateAgent: (id: string, data: Partial<Agent>) =>
     request<Agent>(`/v1/agents/${id}`, { method: "PATCH", body: JSON.stringify(data) }),
+  deleteAgent: (id: string) => request<void>(`/v1/agents/${id}`, { method: "DELETE" }),
   publishAgent: (id: string) =>
     request<Agent>(`/v1/agents/${id}/publish`, { method: "POST" }),
-  invokeAgent: (id: string, input: string) =>
+  invokeAgent: (id: string, options: InvokeOptions | string) =>
     request<{ run_id: string; status: string }>(`/v1/agents/${id}/invoke`, {
       method: "POST",
-      body: JSON.stringify({ input }),
+      body: JSON.stringify(
+        typeof options === "string" ? { input: options } : options
+      ),
     }),
   getRun: (id: string) => request<Run>(`/v1/runs/${id}`),
   listRuns: () => request<Run[]>("/v1/runs"),
@@ -63,6 +75,8 @@ export const api = {
       method: "POST",
       body: JSON.stringify({ name }),
     }),
+  listKbDocuments: (kbId: string) =>
+    request<Document[]>(`/v1/knowledge-bases/${kbId}/documents`),
   uploadDoc: async (kbId: string, file: File) => {
     const token = getToken();
     const form = new FormData();
@@ -89,12 +103,14 @@ export const api = {
       }),
     }),
   listApiKeys: () => request<ApiKey[]>("/v1/api-keys"),
+  revokeApiKey: (id: string) => request<void>(`/v1/api-keys/${id}`, { method: "DELETE" }),
   getUsage: (days?: number) => request<UsageDay[]>(`/v1/usage?days=${days || 30}`),
   listWorkflows: () => request<Workflow[]>("/v1/workflows"),
   createWorkflow: (data: { name: string; description?: string; graph?: WorkflowGraph }) =>
     request<Workflow>("/v1/workflows", { method: "POST", body: JSON.stringify(data) }),
   updateWorkflow: (id: string, data: Partial<Workflow>) =>
     request<Workflow>(`/v1/workflows/${id}`, { method: "PATCH", body: JSON.stringify(data) }),
+  deleteWorkflow: (id: string) => request<void>(`/v1/workflows/${id}`, { method: "DELETE" }),
   publishWorkflow: (id: string) =>
     request<Workflow>(`/v1/workflows/${id}/publish`, { method: "POST" }),
   validateWorkflow: (id: string) =>
@@ -102,10 +118,12 @@ export const api = {
       `/v1/workflows/${id}/validate`,
       { method: "POST" }
     ),
-  invokeWorkflow: (id: string, input: string) =>
+  invokeWorkflow: (id: string, options: InvokeOptions | string) =>
     request<{ run_id: string; status: string }>(`/v1/workflows/${id}/invoke`, {
       method: "POST",
-      body: JSON.stringify({ input }),
+      body: JSON.stringify(
+        typeof options === "string" ? { input: options } : options
+      ),
     }),
   resumeRun: (runId: string, input: string) =>
     request<{ run_id: string; status: string }>(`/v1/runs/${runId}/resume`, {
@@ -197,6 +215,19 @@ export interface GatewayUpdate {
   allowed_models?: string[];
 }
 
+export interface InvokeOptions {
+  input: string;
+  webhook_url?: string;
+  webhook_secret?: string;
+}
+
+export interface Document {
+  id: string;
+  filename: string;
+  status: string;
+  chunk_count: number;
+}
+
 export interface KnowledgeBase {
   id: string;
   name: string;
@@ -211,6 +242,7 @@ export interface ApiKey {
   key?: string;
   scopes: string[];
   resource_ids?: string[];
+  is_active?: boolean;
 }
 
 export interface UsageDay {
