@@ -89,6 +89,8 @@ export default function WorkflowsPage() {
     null
   );
   const [testInput, setTestInput] = useState("");
+  const [webhookUrl, setWebhookUrl] = useState("");
+  const [webhookSecret, setWebhookSecret] = useState("");
   const [output, setOutput] = useState("");
   const [events, setEvents] = useState<string[]>([]);
   const [resumeInput, setResumeInput] = useState("");
@@ -203,7 +205,11 @@ export default function WorkflowsPage() {
     if (!selected || !testInput.trim()) return;
     setOutput("");
     setEvents([]);
-    const { run_id } = await api.invokeWorkflow(selected.id, testInput);
+    const { run_id } = await api.invokeWorkflow(selected.id, {
+      input: testInput,
+      webhook_url: webhookUrl.trim() || undefined,
+      webhook_secret: webhookSecret.trim() || undefined,
+    });
     setEvents((e) => [...e, `started ${run_id}`]);
     streamRunEvents(run_id, (type, data) => {
       setEvents((e) => [...e, `${type}: ${JSON.stringify(data)}`]);
@@ -375,6 +381,14 @@ export default function WorkflowsPage() {
               </div>
 
               <Textarea rows={2} placeholder="Test input…" value={testInput} onChange={(e) => setTestInput(e.target.value)} />
+              <div className="grid gap-2 sm:grid-cols-2">
+                <Field label="Webhook URL (optional)">
+                  <Input value={webhookUrl} onChange={(e) => setWebhookUrl(e.target.value)} placeholder="https://..." />
+                </Field>
+                <Field label="Webhook secret">
+                  <Input type="password" value={webhookSecret} onChange={(e) => setWebhookSecret(e.target.value)} />
+                </Field>
+              </div>
               <Button type="button" size="sm" onClick={invoke}>Invoke</Button>
               {pendingRunId && (
                 <div className="space-y-2">

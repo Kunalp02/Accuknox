@@ -354,3 +354,26 @@ async def list_api_keys(
         )
         for k in keys
     ]
+
+
+@api_keys_router.delete("/{key_id}", status_code=204)
+async def revoke_api_key(
+    key_id: uuid.UUID,
+    auth: AuthContext = Depends(get_auth_context),
+    session: AsyncSession = Depends(get_session),
+):
+    if auth.is_api_key:
+        raise HTTPException(status_code=403, detail="Not allowed")
+    if not auth.role or not has_permission(auth.role, "api_key:write"):
+        raise HTTPException(status_code=403, detail="Permission denied")
+
+    from orchestrator_core.models import ApiKey
+
+    result = await session.execute(
+        select(ApiKey).where(ApiKey.id == key_id, ApiKey.organization_id == auth.org_id)
+    )
+    api_key = result.scalar_one_or_none()
+    if not api_key:
+        raise HTTPException(status_code=404, detail="API key not found")
+    api_key.is_active = False
+    await session.commit()

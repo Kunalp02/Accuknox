@@ -27,6 +27,8 @@ export default function AgentsPage() {
     mcp_tools: [] as McpToolEntry[],
   });
   const [testInput, setTestInput] = useState("");
+  const [webhookUrl, setWebhookUrl] = useState("");
+  const [webhookSecret, setWebhookSecret] = useState("");
   const [output, setOutput] = useState("");
   const [events, setEvents] = useState<string[]>([]);
   const [running, setRunning] = useState(false);
@@ -129,7 +131,11 @@ export default function AgentsPage() {
     setOutput("");
     setEvents([]);
     try {
-      const { run_id } = await api.invokeAgent(selected.id, testInput);
+      const { run_id } = await api.invokeAgent(selected.id, {
+        input: testInput,
+        webhook_url: webhookUrl.trim() || undefined,
+        webhook_secret: webhookSecret.trim() || undefined,
+      });
       setEvents((e) => [...e, `run started: ${run_id}`]);
       const stop = streamRunEvents(run_id, (type, data) => {
         setEvents((e) => [...e, `${type}: ${JSON.stringify(data)}`]);
@@ -322,6 +328,21 @@ export default function AgentsPage() {
                 value={testInput}
                 onChange={(e) => setTestInput(e.target.value)}
               />
+              <Field label="Webhook URL (optional)">
+                <Input
+                  value={webhookUrl}
+                  onChange={(e) => setWebhookUrl(e.target.value)}
+                  placeholder="https://hooks.example.com/run-complete"
+                />
+              </Field>
+              <Field label="Webhook secret (optional, for HMAC signing)">
+                <Input
+                  type="password"
+                  value={webhookSecret}
+                  onChange={(e) => setWebhookSecret(e.target.value)}
+                  placeholder="whsec_..."
+                />
+              </Field>
               <Button type="button" onClick={invoke} disabled={running}>
                 <Send className="h-4 w-4" />
                 {running ? "Running..." : "Invoke"}

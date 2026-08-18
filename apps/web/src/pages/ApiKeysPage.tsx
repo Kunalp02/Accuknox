@@ -3,6 +3,7 @@ import { api, Agent, ApiKey, Workflow, UsageDay } from "../api";
 import { PageHeader } from "../components/ui/page-header";
 import { Card, CardHeader } from "../components/ui/card";
 import { Button } from "../components/ui/button";
+import { Badge } from "../components/ui/badge";
 import { Field } from "../components/ui/label";
 import { Input } from "../components/ui/input";
 
@@ -105,9 +106,28 @@ export default function ApiKeysPage() {
 
             <div className="border-t border-border pt-4 space-y-2">
               {keys.map((k) => (
-                <div key={k.id} className="font-mono text-xs text-gray-500">
-                  {k.name} — {k.key_prefix}... · {k.scopes.join(", ")}
-                  {k.resource_ids?.length ? ` · scoped: ${k.resource_ids.length}` : " · all resources"}
+                <div key={k.id} className="flex items-center justify-between gap-2 rounded-lg border border-border px-3 py-2">
+                  <div className="font-mono text-xs text-gray-500 min-w-0">
+                    {k.name} — {k.key_prefix}... · {k.scopes.join(", ")}
+                    {k.resource_ids?.length ? ` · scoped: ${k.resource_ids.length}` : " · all resources"}
+                  </div>
+                  <div className="flex items-center gap-2 shrink-0">
+                    {k.is_active === false && <Badge variant="danger">revoked</Badge>}
+                    {k.is_active !== false && (
+                      <Button
+                        type="button"
+                        variant="secondary"
+                        size="sm"
+                        onClick={async () => {
+                          if (!confirm(`Revoke API key "${k.name}"?`)) return;
+                          await api.revokeApiKey(k.id);
+                          await load();
+                        }}
+                      >
+                        Revoke
+                      </Button>
+                    )}
+                  </div>
                 </div>
               ))}
             </div>

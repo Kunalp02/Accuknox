@@ -1,23 +1,48 @@
-import { useEffect, useState } from "react";
-import { api, KnowledgeBase } from "../api";
+import { useCallback, useEffect, useState } from "react";
+import { api, Document, KnowledgeBase } from "../api";
 import { PageHeader } from "../components/ui/page-header";
 import { Card, CardHeader } from "../components/ui/card";
 import { Button } from "../components/ui/button";
+import { Badge } from "../components/ui/badge";
 import { Field } from "../components/ui/label";
 import { Input } from "../components/ui/input";
 import { cn } from "../lib/cn";
+
+function docStatusVariant(status: string): "success" | "warning" | "danger" | "default" {
+  if (status === "indexed") return "success";
+  if (status === "pending" || status === "processing") return "warning";
+  if (status === "failed") return "danger";
+  return "default";
+}
 
 export default function KnowledgePage() {
   const [kbs, setKbs] = useState<KnowledgeBase[]>([]);
   const [name, setName] = useState("");
   const [selectedKb, setSelectedKb] = useState<string | null>(null);
+  const [documents, setDocuments] = useState<Document[]>([]);
   const [uploadMsg, setUploadMsg] = useState("");
 
   const load = () => api.listKbs().then(setKbs);
 
+  const loadDocuments = useCallback(async () => {
+    if (!selectedKb) {
+      setDocuments([]);
+      return;
+    }
+    const docs = await api.listKbDocuments(selectedKb);
+    setDocuments(docs);
+  }, [selectedKb]);
+
   useEffect(() => {
     load();
   }, []);
+
+  useEffect(() => {
+    loadDocuments();
+    if (!selectedKb) return;
+    const interval = setInterval(loadDocuments, 3000);
+    return () => clearInterval(interval);
+  }, [selectedKb, loadDocuments]);
 
   const create = async () => {
     if (!name.trim()) return;
@@ -32,6 +57,7 @@ export default function KnowledgePage() {
     await api.uploadDoc(selectedKb, file);
     setUploadMsg("Document uploaded — indexing in background");
     e.target.value = "";
+    await loadDocuments();
     setTimeout(() => setUploadMsg(""), 4000);
   };
 
@@ -72,9 +98,9 @@ export default function KnowledgePage() {
         </Card>
 
         <Card>
-          <CardHeader title="Upload document" />
+          <CardHeader title="Documents" />
           {selectedKb ? (
-            <div className="space-y-3">
+            <div className="space-y-4">
               <p className="text-sm text-gray-500">Upload text files to index into Qdrant</p>
               <input
                 type="file"
@@ -83,6 +109,24 @@ export default function KnowledgePage() {
                 className="text-sm text-gray-600 file:mr-3 file:rounded-lg file:border-0 file:bg-primary-subtle file:px-4 file:py-2 file:text-sm file:font-medium file:text-primary hover:file:bg-indigo-100"
               />
               {uploadMsg && <p className="text-sm text-emerald-600">{uploadMsg}</p>}
+
+              <div className="border-t border-border pt-4 space-y-2">
+                {documents.length === 0 && (
+                  <p className="text-sm text-gray-500">No documents yet</p>
+                )}
+                {documents.map((doc) => (
+                  <div
+                    key={doc.id}
+                    className="flex items-center justify-between rounded-lg border border-border px-3 py-2"
+                  >
+                    <span className="text-sm text-gray-900 truncate">{doc.filename}</span>
+                    <div className="flex items-center gap-2 shrink-0">
+                      <Badge variant={docStatusVariant(doc.status)}>{doc.status}</Badge>
+                      <span className="font-mono text-xs text-gray-400">{doc.chunk_count} chunks</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
             </div>
           ) : (
             <p className="text-sm text-gray-500">Select a knowledge base first</p>

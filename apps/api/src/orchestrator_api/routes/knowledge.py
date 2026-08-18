@@ -133,3 +133,33 @@ async def upload_document(
     return DocumentResponse(
         id=str(doc.id), filename=doc.filename, status=doc.status, chunk_count=doc.chunk_count
     )
+
+
+@router.get("/{kb_id}/documents", response_model=list[DocumentResponse])
+async def list_documents(
+    kb_id: uuid.UUID,
+    auth: AuthContext = Depends(get_auth_context),
+    session: AsyncSession = Depends(get_session),
+):
+    _check(auth, "kb:read")
+    result = await session.execute(
+        select(KnowledgeBase).where(
+            KnowledgeBase.id == kb_id, KnowledgeBase.organization_id == auth.org_id
+        )
+    )
+    kb = result.scalar_one_or_none()
+    if not kb:
+        raise HTTPException(status_code=404, detail="Knowledge base not found")
+
+    docs_result = await session.execute(
+        select(Document)
+        .where(Document.knowledge_base_id == kb_id, Document.organization_id == auth.org_id)
+        .order_by(Document.created_at.desc())
+    )
+    docs = docs_result.scalars().all()
+    return [
+        DocumentResponse(
+            id=str(d.id), filename=d.filename, status=d.status, chunk_count=d.chunk_count
+        )
+        for d in docs
+    ]

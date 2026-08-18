@@ -50,6 +50,25 @@ npm run dev
 
 Open http://localhost:5173
 
+### 5. Production (Docker)
+
+```bash
+cp .env.example .env
+# Edit LLM_GATEWAY_URL and secrets for production
+
+cd infra
+docker compose -f docker-compose.prod.yml up -d --build
+```
+
+Open http://localhost (web UI proxies `/v1` to API)
+
+### Migrations
+
+```bash
+uv sync --all-packages
+./scripts/migrate.sh
+```
+
 ### Phase 2+ (this release)
 
 - **Workflows** — graph editor (React Flow), all node types: agent, supervisor, tool, branch, parallel, human

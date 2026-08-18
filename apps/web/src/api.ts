@@ -60,10 +60,12 @@ export const api = {
   deleteAgent: (id: string) => request<void>(`/v1/agents/${id}`, { method: "DELETE" }),
   publishAgent: (id: string) =>
     request<Agent>(`/v1/agents/${id}/publish`, { method: "POST" }),
-  invokeAgent: (id: string, input: string) =>
+  invokeAgent: (id: string, options: InvokeOptions | string) =>
     request<{ run_id: string; status: string }>(`/v1/agents/${id}/invoke`, {
       method: "POST",
-      body: JSON.stringify({ input }),
+      body: JSON.stringify(
+        typeof options === "string" ? { input: options } : options
+      ),
     }),
   getRun: (id: string) => request<Run>(`/v1/runs/${id}`),
   listRuns: () => request<Run[]>("/v1/runs"),
@@ -73,6 +75,8 @@ export const api = {
       method: "POST",
       body: JSON.stringify({ name }),
     }),
+  listKbDocuments: (kbId: string) =>
+    request<Document[]>(`/v1/knowledge-bases/${kbId}/documents`),
   uploadDoc: async (kbId: string, file: File) => {
     const token = getToken();
     const form = new FormData();
@@ -99,6 +103,7 @@ export const api = {
       }),
     }),
   listApiKeys: () => request<ApiKey[]>("/v1/api-keys"),
+  revokeApiKey: (id: string) => request<void>(`/v1/api-keys/${id}`, { method: "DELETE" }),
   getUsage: (days?: number) => request<UsageDay[]>(`/v1/usage?days=${days || 30}`),
   listWorkflows: () => request<Workflow[]>("/v1/workflows"),
   createWorkflow: (data: { name: string; description?: string; graph?: WorkflowGraph }) =>
@@ -113,10 +118,12 @@ export const api = {
       `/v1/workflows/${id}/validate`,
       { method: "POST" }
     ),
-  invokeWorkflow: (id: string, input: string) =>
+  invokeWorkflow: (id: string, options: InvokeOptions | string) =>
     request<{ run_id: string; status: string }>(`/v1/workflows/${id}/invoke`, {
       method: "POST",
-      body: JSON.stringify({ input }),
+      body: JSON.stringify(
+        typeof options === "string" ? { input: options } : options
+      ),
     }),
   resumeRun: (runId: string, input: string) =>
     request<{ run_id: string; status: string }>(`/v1/runs/${runId}/resume`, {
@@ -208,6 +215,19 @@ export interface GatewayUpdate {
   allowed_models?: string[];
 }
 
+export interface InvokeOptions {
+  input: string;
+  webhook_url?: string;
+  webhook_secret?: string;
+}
+
+export interface Document {
+  id: string;
+  filename: string;
+  status: string;
+  chunk_count: number;
+}
+
 export interface KnowledgeBase {
   id: string;
   name: string;
@@ -222,6 +242,7 @@ export interface ApiKey {
   key?: string;
   scopes: string[];
   resource_ids?: string[];
+  is_active?: boolean;
 }
 
 export interface UsageDay {
