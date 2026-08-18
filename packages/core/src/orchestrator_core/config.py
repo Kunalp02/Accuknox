@@ -25,6 +25,10 @@ class Settings(BaseSettings):
 
     org_rate_limit_per_minute: int = 120
 
+    # LLM HTTP client (corporate proxy / self-signed cert)
+    llm_gateway_verify_ssl: bool = True
+    llm_gateway_trust_env: bool = False
+
     api_host: str = "0.0.0.0"
     api_port: int = 8000
     cors_origins: str = "http://localhost:5173"

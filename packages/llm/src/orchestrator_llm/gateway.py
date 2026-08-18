@@ -8,7 +8,11 @@ from orchestrator_core.security import decrypt_secret, encrypt_secret
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from orchestrator_llm.client import GatewayConfig, platform_gateway_config
+from orchestrator_llm.client import (
+    GatewayConfig,
+    normalize_gateway_base_url,
+    platform_gateway_config,
+)
 
 
 async def get_gateway_for_org(session: AsyncSession, org_id: UUID) -> GatewayConfig:
@@ -24,7 +28,7 @@ async def get_gateway_for_org(session: AsyncSession, org_id: UUID) -> GatewayCon
         api_key = decrypt_secret(row.api_key_encrypted)
 
     return GatewayConfig(
-        base_url=row.base_url,
+        base_url=normalize_gateway_base_url(row.base_url),
         api_key=api_key,
         default_model=row.default_model,
         embed_model=row.embed_model,
@@ -47,14 +51,14 @@ async def upsert_gateway_config(
     if not row:
         row = LlmGatewayConfig(
             organization_id=org_id,
-            base_url=base_url,
+            base_url=normalize_gateway_base_url(base_url),
             default_model=default_model,
             embed_model=embed_model,
             allowed_models=allowed_models,
         )
         session.add(row)
     else:
-        row.base_url = base_url
+        row.base_url = normalize_gateway_base_url(base_url)
         row.default_model = default_model
         row.embed_model = embed_model
         row.allowed_models = allowed_models
