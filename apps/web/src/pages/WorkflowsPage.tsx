@@ -10,10 +10,31 @@ import ReactFlow, {
   useNodesState,
 } from "reactflow";
 import "reactflow/dist/style.css";
+import { Plus } from "lucide-react";
 import { api, Agent, McpConnection, Workflow, streamRunEvents } from "../api";
 import { NodeConfigPanel, nodeLabel, WorkflowNodeData } from "../components/WorkflowNodePanel";
+import { PageHeader } from "../components/ui/page-header";
+import { Card, CardHeader } from "../components/ui/card";
+import { Button } from "../components/ui/button";
+import { Badge } from "../components/ui/badge";
+import { Field } from "../components/ui/label";
+import { Input } from "../components/ui/input";
+import { Textarea } from "../components/ui/textarea";
+import { Select } from "../components/ui/select";
+import { cn } from "../lib/cn";
 
 const NODE_TYPES = ["agent", "supervisor", "tool", "branch", "parallel", "human"];
+
+const nodeStyle = {
+  background: "#ffffff",
+  border: "1px solid #E5E7EB",
+  color: "#111827",
+  borderRadius: 8,
+  padding: 8,
+  fontSize: 12,
+  minWidth: 120,
+  boxShadow: "0 1px 3px rgba(0,0,0,0.06)",
+};
 
 function graphToFlow(graph: Workflow["graph"]): { nodes: Node[]; edges: Edge[] } {
   const nodes: Node[] = graph.nodes.map((n, i) => {
@@ -23,15 +44,7 @@ function graphToFlow(graph: Workflow["graph"]): { nodes: Node[]; edges: Edge[] }
       id: wn.id,
       position: pos,
       data: { label: nodeLabel(wn), node: { ...wn, position: pos } },
-      style: {
-        background: "#1c2430",
-        border: "1px solid #2a3544",
-        color: "#e8edf4",
-        borderRadius: 8,
-        padding: 8,
-        fontSize: 12,
-        minWidth: 120,
-      },
+      style: nodeStyle,
     };
   });
   const edges: Edge[] = graph.edges.map((e, i) => ({
@@ -39,7 +52,7 @@ function graphToFlow(graph: Workflow["graph"]): { nodes: Node[]; edges: Edge[] }
     source: e.from,
     target: e.to,
     label: e.condition || undefined,
-    style: { stroke: "#3d8bfd" },
+    style: { stroke: "#4F46E5" },
   }));
   return { nodes, edges };
 }
@@ -112,7 +125,7 @@ export default function WorkflowsPage() {
 
   const onConnect = useCallback(
     (params: Connection) =>
-      setEdges((eds) => addEdge({ ...params, style: { stroke: "#3d8bfd" } }, eds)),
+      setEdges((eds) => addEdge({ ...params, style: { stroke: "#4F46E5" } }, eds)),
     [setEdges]
   );
 
@@ -125,7 +138,7 @@ export default function WorkflowsPage() {
               data: { label: nodeLabel(updated), node: updated },
               style: {
                 ...n.style,
-                borderColor: "var(--accent)",
+                borderColor: "#4F46E5",
               },
             }
           : n
@@ -165,14 +178,7 @@ export default function WorkflowsPage() {
         id,
         position,
         data: { label: nodeLabel(base), node: base },
-        style: {
-          background: "#1c2430",
-          border: "1px solid #2a3544",
-          color: "#e8edf4",
-          borderRadius: 8,
-          padding: 8,
-          fontSize: 12,
-        },
+        style: nodeStyle,
       },
     ]);
     if (!entry) setEntry(id);
@@ -227,97 +233,114 @@ export default function WorkflowsPage() {
   };
 
   return (
-    <div className="stack">
-      <h2 style={{ margin: 0 }}>Workflows</h2>
-      <p style={{ color: "var(--muted)", margin: 0 }}>
-        Click a node to configure it. Connect edges and set conditions for supervisor routes.
-      </p>
-      <div className="workflow-layout" style={{ display: "grid", gridTemplateColumns: "220px 1fr 280px", gap: "1rem" }}>
-        <div className="card stack">
-          <h3 style={{ margin: 0 }}>Workflows</h3>
-          {workflows.map((w) => (
-            <button key={w.id} type="button" className="secondary" onClick={() => selectWorkflow(w)}>
-              {w.name}{" "}
-              <span className={`badge ${w.is_published ? "success" : ""}`}>
-                {w.is_published ? `v${w.version}` : "draft"}
-              </span>
-            </button>
-          ))}
-          <button
+    <div>
+      <PageHeader
+        title="Workflows"
+        description="Click a node to configure it. Connect edges and set conditions for supervisor routes."
+      />
+
+      <div className="grid gap-5 lg:grid-cols-[220px_1fr_280px]">
+        <Card>
+          <CardHeader title="Workflows" />
+          <div className="space-y-1">
+            {workflows.map((w) => (
+              <button
+                key={w.id}
+                type="button"
+                onClick={() => selectWorkflow(w)}
+                className={cn(
+                  "flex w-full items-center justify-between rounded-lg px-3 py-2.5 text-left text-sm transition-colors",
+                  selected?.id === w.id ? "bg-primary-subtle text-primary" : "hover:bg-gray-50 text-gray-700"
+                )}
+              >
+                <span className="font-medium">{w.name}</span>
+                <Badge variant={w.is_published ? "success" : "default"}>
+                  {w.is_published ? `v${w.version}` : "draft"}
+                </Badge>
+              </button>
+            ))}
+          </div>
+          <Button
             type="button"
+            size="sm"
+            className="mt-4"
             onClick={async () => {
               const wf = await api.createWorkflow({ name: `Workflow ${workflows.length + 1}` });
               await load();
               selectWorkflow(wf);
             }}
           >
+            <Plus className="h-4 w-4" />
             New workflow
-          </button>
-        </div>
+          </Button>
+        </Card>
 
-        <div className="card stack">
+        <Card padding="sm">
           {selected ? (
-            <>
-              <div style={{ display: "flex", gap: "0.5rem", flexWrap: "wrap", alignItems: "center" }}>
-                <strong>{selected.name}</strong>
-                <select value={newNodeType} onChange={(e) => setNewNodeType(e.target.value)}>
+            <div className="space-y-3 p-2">
+              <div className="flex flex-wrap items-center gap-2">
+                <strong className="text-sm text-gray-900">{selected.name}</strong>
+                <Select value={newNodeType} onChange={(e) => setNewNodeType(e.target.value)} className="w-auto min-w-[100px]">
                   {NODE_TYPES.map((t) => (
                     <option key={t} value={t}>{t}</option>
                   ))}
-                </select>
-                <input
+                </Select>
+                <Input
                   placeholder="node id"
                   value={newNodeId}
                   onChange={(e) => setNewNodeId(e.target.value)}
-                  style={{ width: 100 }}
+                  className="w-24"
                 />
-                <button type="button" className="secondary" onClick={addNode}>Add</button>
-                <button type="button" onClick={save}>Save</button>
-                <button type="button" className="secondary" onClick={validate}>Validate</button>
-                <button
+                <Button type="button" variant="secondary" size="sm" onClick={addNode}>Add</Button>
+                <Button type="button" size="sm" onClick={save}>Save</Button>
+                <Button type="button" variant="secondary" size="sm" onClick={validate}>Validate</Button>
+                <Button
                   type="button"
-                  className="secondary"
+                  variant="secondary"
+                  size="sm"
                   onClick={() => api.publishWorkflow(selected.id).then(load)}
                 >
                   Publish
-                </button>
+                </Button>
               </div>
-              <div className="field">
-                <label>Entry node</label>
-                <select value={entry} onChange={(e) => setEntry(e.target.value)}>
+
+              <Field label="Entry node">
+                <Select value={entry} onChange={(e) => setEntry(e.target.value)}>
                   {nodeIds.map((id) => (
                     <option key={id} value={id}>{id}</option>
                   ))}
-                </select>
-              </div>
+                </Select>
+              </Field>
+
               {validation && (
-                <div style={{ fontSize: "0.85rem" }}>
+                <div className="text-sm">
                   {validation.valid ? (
-                    <p style={{ color: "var(--success)", margin: 0 }}>Graph is valid</p>
+                    <p className="text-emerald-600">Graph is valid</p>
                   ) : (
-                    <ul style={{ color: "var(--danger)", margin: 0, paddingLeft: "1.2rem" }}>
+                    <ul className="text-red-600 list-disc pl-4">
                       {validation.errors?.map((err) => <li key={err}>{err}</li>)}
                     </ul>
                   )}
                   {validation.warnings?.map((w) => (
-                    <p key={w} style={{ color: "var(--muted)", margin: "0.25rem 0" }}>{w}</p>
+                    <p key={w} className="text-gray-500">{w}</p>
                   ))}
                 </div>
               )}
-              <div style={{ height: 380, border: "1px solid var(--border)", borderRadius: 10 }}>
+
+              <div className="h-[380px] rounded-lg border border-border overflow-hidden">
                 <ReactFlow
                   nodes={nodes.map((n) => ({
                     ...n,
                     style: {
                       ...n.style,
-                      borderColor: n.id === selectedNodeId ? "var(--accent)" : "#2a3544",
+                      borderColor: n.id === selectedNodeId ? "#4F46E5" : "#E5E7EB",
                       borderWidth: n.id === selectedNodeId ? 2 : 1,
                     },
                   }))}
                   edges={edges.map((e) => ({
                     ...e,
                     style: {
-                      stroke: e.id === selectedEdgeId ? "var(--success)" : "#3d8bfd",
+                      stroke: e.id === selectedEdgeId ? "#10B981" : "#4F46E5",
                       strokeWidth: e.id === selectedEdgeId ? 2 : 1,
                     },
                   }))}
@@ -334,27 +357,30 @@ export default function WorkflowsPage() {
                   }}
                   fitView
                 >
-                  <Background color="#2a3544" />
+                  <Background color="#E5E7EB" gap={16} />
                   <Controls />
                 </ReactFlow>
               </div>
-              <textarea rows={2} placeholder="Test input…" value={testInput} onChange={(e) => setTestInput(e.target.value)} />
-              <button type="button" onClick={invoke}>Invoke</button>
+
+              <Textarea rows={2} placeholder="Test input…" value={testInput} onChange={(e) => setTestInput(e.target.value)} />
+              <Button type="button" size="sm" onClick={invoke}>Invoke</Button>
               {pendingRunId && (
-                <div className="stack">
-                  <input placeholder="Human response…" value={resumeInput} onChange={(e) => setResumeInput(e.target.value)} />
-                  <button type="button" onClick={resume}>Resume</button>
+                <div className="space-y-2">
+                  <Input placeholder="Human response…" value={resumeInput} onChange={(e) => setResumeInput(e.target.value)} />
+                  <Button type="button" size="sm" onClick={resume}>Resume</Button>
                 </div>
               )}
-              <div className="chat-output">{output || "…"}</div>
-            </>
+              <div className="min-h-[60px] rounded-lg border border-border bg-gray-50 p-3 text-sm">
+                {output || "…"}
+              </div>
+            </div>
           ) : (
-            <p style={{ color: "var(--muted)" }}>Select or create a workflow</p>
+            <p className="p-4 text-sm text-gray-500">Select or create a workflow</p>
           )}
-        </div>
+        </Card>
 
-        <div className="card stack">
-          <h3 style={{ margin: 0 }}>Inspector</h3>
+        <Card>
+          <CardHeader title="Inspector" />
           {selectedNode && selectedNodeId ? (
             <NodeConfigPanel
               node={(selectedNode.data as { node: WorkflowNodeData }).node}
@@ -364,13 +390,12 @@ export default function WorkflowsPage() {
               onChange={(updated) => updateNodeData(selectedNodeId, updated)}
             />
           ) : selectedEdge && selectedEdgeId ? (
-            <div className="stack">
-              <p className="mono" style={{ margin: 0, fontSize: "0.85rem" }}>
+            <div className="space-y-3">
+              <p className="font-mono text-sm text-gray-600">
                 {selectedEdge.source} → {selectedEdge.target}
               </p>
-              <div className="field">
-                <label>Edge condition</label>
-                <input
+              <Field label="Edge condition">
+                <Input
                   value={typeof selectedEdge.label === "string" ? selectedEdge.label : ""}
                   onChange={(e) => {
                     const label = e.target.value;
@@ -382,15 +407,15 @@ export default function WorkflowsPage() {
                   }}
                   placeholder="route == researcher"
                 />
-              </div>
-              <p style={{ color: "var(--muted)", fontSize: "0.8rem", margin: 0 }}>
+              </Field>
+              <p className="text-xs text-gray-500">
                 Used by supervisor routing and branch nodes. Leave empty for unconditional flow.
               </p>
             </div>
           ) : (
-            <p style={{ color: "var(--muted)" }}>Select a node or edge on the graph</p>
+            <p className="text-sm text-gray-500">Select a node or edge on the graph</p>
           )}
-        </div>
+        </Card>
       </div>
     </div>
   );

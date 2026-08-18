@@ -25,7 +25,16 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
   const res = await fetch(`${API_BASE}${path}`, { ...options, headers });
   if (!res.ok) {
     const err = await res.json().catch(() => ({ detail: res.statusText }));
-    throw new Error(err.detail || "Request failed");
+    const detail = err.detail;
+    const message =
+      typeof detail === "string"
+        ? detail
+        : Array.isArray(detail)
+          ? detail.map((d: { msg?: string }) => d.msg || JSON.stringify(d)).join("; ")
+          : detail && typeof detail === "object"
+            ? JSON.stringify(detail)
+            : "Request failed";
+    throw new Error(message);
   }
   if (res.status === 204) return undefined as T;
   return res.json();

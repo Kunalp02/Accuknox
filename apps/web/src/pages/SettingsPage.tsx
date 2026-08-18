@@ -1,5 +1,11 @@
 import { useEffect, useState } from "react";
 import { api, GatewaySettings } from "../api";
+import { PageHeader } from "../components/ui/page-header";
+import { Card } from "../components/ui/card";
+import { Button } from "../components/ui/button";
+import { Badge } from "../components/ui/badge";
+import { Field } from "../components/ui/label";
+import { Input } from "../components/ui/input";
 
 export default function SettingsPage() {
   const [settings, setSettings] = useState<GatewaySettings | null>(null);
@@ -71,62 +77,65 @@ export default function SettingsPage() {
   if (!settings) return null;
 
   return (
-    <div className="stack">
-      <h2 style={{ margin: 0 }}>Settings</h2>
-      <p style={{ color: "var(--muted)", margin: 0 }}>
-        Configure your org&apos;s OpenAI-compatible gateway (Ollama Cloud, Bifrost, etc.)
-      </p>
-      <div className="card stack">
-        <div style={{ display: "flex", gap: "0.5rem", alignItems: "center" }}>
-          <span className={`badge ${settings.uses_platform_default ? "pending" : "success"}`}>
+    <div>
+      <PageHeader
+        title="Settings"
+        description="Configure your org's OpenAI-compatible gateway (Ollama Cloud, Bifrost, etc.)"
+      />
+
+      <Card className="max-w-2xl space-y-4">
+        <div className="flex flex-wrap items-center gap-2">
+          <Badge variant={settings.uses_platform_default ? "warning" : "success"}>
             {settings.uses_platform_default ? "platform default" : "custom gateway"}
-          </span>
-          <span className="mono" style={{ color: "var(--muted)", fontSize: "0.85rem" }}>
+          </Badge>
+          <span className="font-mono text-xs text-gray-500">
             platform: {settings.platform_default_model} · embed: {settings.platform_embed_model}
           </span>
         </div>
-        <div className="field">
-          <label>Gateway base URL</label>
-          <input
+
+        <Field label="Gateway base URL">
+          <Input
             value={form.base_url}
             onChange={(e) => setForm({ ...form, base_url: e.target.value })}
             placeholder="https://your-bifrost-or-ollama-host/v1"
           />
-        </div>
-        <div className="field">
-          <label>Default chat model</label>
-          <input value={form.default_model} onChange={(e) => setForm({ ...form, default_model: e.target.value })} />
-        </div>
-        <div className="field">
-          <label>Embedding model</label>
-          <input value={form.embed_model} onChange={(e) => setForm({ ...form, embed_model: e.target.value })} />
-        </div>
-        <div className="field">
-          <label>API key {settings.has_api_key && !form.api_key ? "(configured — enter to replace)" : ""}</label>
-          <input
+        </Field>
+        <Field label="Default chat model">
+          <Input value={form.default_model} onChange={(e) => setForm({ ...form, default_model: e.target.value })} />
+        </Field>
+        <Field label="Embedding model">
+          <Input value={form.embed_model} onChange={(e) => setForm({ ...form, embed_model: e.target.value })} />
+        </Field>
+        <Field label={`API key ${settings.has_api_key && !form.api_key ? "(configured — enter to replace)" : ""}`}>
+          <Input
             type="password"
             value={form.api_key}
             onChange={(e) => setForm({ ...form, api_key: e.target.value })}
             placeholder="Optional gateway API key"
           />
-        </div>
-        <div className="field">
-          <label>Allowed models (comma-separated, optional)</label>
-          <input value={form.allowed_models} onChange={(e) => setForm({ ...form, allowed_models: e.target.value })} />
-        </div>
-        <div style={{ display: "flex", gap: "0.5rem", flexWrap: "wrap" }}>
-          <button type="button" onClick={save} disabled={loading || !form.base_url}>Save custom gateway</button>
-          <button type="button" className="secondary" onClick={test}>Test connection</button>
+        </Field>
+        <Field label="Allowed models (comma-separated, optional)">
+          <Input value={form.allowed_models} onChange={(e) => setForm({ ...form, allowed_models: e.target.value })} />
+        </Field>
+
+        <div className="flex flex-wrap gap-2">
+          <Button type="button" onClick={save} disabled={loading || !form.base_url}>
+            Save custom gateway
+          </Button>
+          <Button type="button" variant="secondary" onClick={test}>Test connection</Button>
           {!settings.uses_platform_default && (
-            <button type="button" className="secondary" onClick={usePlatform}>Use platform default</button>
+            <Button type="button" variant="secondary" onClick={usePlatform}>
+              Use platform default
+            </Button>
           )}
         </div>
+
         {testResult && (
-          <pre className="mono" style={{ fontSize: "0.75rem", color: "var(--muted)", whiteSpace: "pre-wrap" }}>
+          <pre className="font-mono text-xs text-gray-500 whitespace-pre-wrap rounded-lg bg-gray-50 p-3">
             {testResult}
           </pre>
         )}
-      </div>
+      </Card>
     </div>
   );
 }

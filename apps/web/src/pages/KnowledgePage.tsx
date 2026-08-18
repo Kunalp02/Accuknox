@@ -1,5 +1,11 @@
 import { useEffect, useState } from "react";
 import { api, KnowledgeBase } from "../api";
+import { PageHeader } from "../components/ui/page-header";
+import { Card, CardHeader } from "../components/ui/card";
+import { Button } from "../components/ui/button";
+import { Field } from "../components/ui/label";
+import { Input } from "../components/ui/input";
+import { cn } from "../lib/cn";
 
 export default function KnowledgePage() {
   const [kbs, setKbs] = useState<KnowledgeBase[]>([]);
@@ -28,44 +34,57 @@ export default function KnowledgePage() {
   };
 
   return (
-    <div className="stack">
-      <h2 style={{ margin: 0 }}>Knowledge bases</h2>
-      <p style={{ color: "var(--muted)", margin: 0 }}>
-        Embeddings use <span className="mono">nomic-embed-text</span> via your LLM gateway
-      </p>
-      <div className="grid-2">
-        <div className="card stack">
-          <h3 style={{ margin: 0 }}>Create</h3>
-          <div className="field">
-            <label>Name</label>
-            <input value={name} onChange={(e) => setName(e.target.value)} />
+    <div>
+      <PageHeader
+        title="Knowledge bases"
+        description="Embeddings use nomic-embed-text via your LLM gateway. Documents are indexed into Qdrant."
+      />
+
+      <div className="grid gap-5 lg:grid-cols-2">
+        <Card>
+          <CardHeader title="Create" />
+          <Field label="Name">
+            <Input value={name} onChange={(e) => setName(e.target.value)} />
+          </Field>
+          <Button type="button" onClick={create}>Create knowledge base</Button>
+
+          <div className="mt-6 border-t border-border pt-5">
+            <h4 className="mb-3 text-sm font-semibold text-gray-900">Existing</h4>
+            <div className="space-y-1">
+              {kbs.map((kb) => (
+                <button
+                  key={kb.id}
+                  type="button"
+                  onClick={() => setSelectedKb(kb.id)}
+                  className={cn(
+                    "w-full rounded-lg px-3 py-2.5 text-left text-sm transition-colors",
+                    selectedKb === kb.id ? "bg-primary-subtle text-primary" : "hover:bg-gray-50 text-gray-700"
+                  )}
+                >
+                  {kb.name}{" "}
+                  <span className="font-mono text-xs text-gray-400">({kb.embed_model})</span>
+                </button>
+              ))}
+            </div>
           </div>
-          <button type="button" onClick={create}>Create knowledge base</button>
-          <hr style={{ border: "none", borderTop: "1px solid var(--border)" }} />
-          <h4 style={{ margin: 0 }}>Existing</h4>
-          {kbs.map((kb) => (
-            <button
-              key={kb.id}
-              type="button"
-              className="secondary"
-              onClick={() => setSelectedKb(kb.id)}
-              style={{ borderColor: selectedKb === kb.id ? "var(--accent)" : undefined }}
-            >
-              {kb.name} <span className="mono">({kb.embed_model})</span>
-            </button>
-          ))}
-        </div>
-        <div className="card stack">
-          <h3 style={{ margin: 0 }}>Upload document</h3>
+        </Card>
+
+        <Card>
+          <CardHeader title="Upload document" />
           {selectedKb ? (
-            <>
-              <p style={{ color: "var(--muted)" }}>Upload text files to index into Qdrant</p>
-              <input type="file" accept=".txt,.md,.csv" onChange={upload} />
-            </>
+            <div className="space-y-3">
+              <p className="text-sm text-gray-500">Upload text files to index into Qdrant</p>
+              <input
+                type="file"
+                accept=".txt,.md,.csv"
+                onChange={upload}
+                className="text-sm text-gray-600 file:mr-3 file:rounded-lg file:border-0 file:bg-primary-subtle file:px-4 file:py-2 file:text-sm file:font-medium file:text-primary hover:file:bg-indigo-100"
+              />
+            </div>
           ) : (
-            <p style={{ color: "var(--muted)" }}>Select a knowledge base first</p>
+            <p className="text-sm text-gray-500">Select a knowledge base first</p>
           )}
-        </div>
+        </Card>
       </div>
     </div>
   );
