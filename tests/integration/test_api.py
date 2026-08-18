@@ -61,6 +61,17 @@ async def test_agent_crud_and_invoke(client: AsyncClient, auth_headers: dict):
     assert run.json()["id"] == run_id
     assert run.json()["status"] in ("pending", "running", "completed", "failed")
 
+
+@pytest.mark.asyncio
+async def test_agent_delete(client: AsyncClient, auth_headers: dict):
+    create = await client.post(
+        "/v1/agents",
+        headers=auth_headers,
+        json={"name": "Delete Agent", "system_prompt": "test", "model": "llama3.2"},
+    )
+    assert create.status_code == 201
+    agent_id = create.json()["id"]
+
     delete = await client.delete(f"/v1/agents/{agent_id}", headers=auth_headers)
     assert delete.status_code == 204
 
