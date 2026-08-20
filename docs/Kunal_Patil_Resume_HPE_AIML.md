@@ -1,0 +1,71 @@
+# KUNAL PATIL
+**AI/ML Engineer**
+
+Mumbai, Maharashtra 400063 | kunalpatil970730@gmail.com | 8530397730  
+LinkedIn: linkedin.com/in/kp7730 | GitHub: github.com/kunalp02
+
+---
+
+## PROFILE
+
+AI/ML Engineer with 1+ years of experience building production AI systems, LLM agents, RAG pipelines, and MCP integrations using Python, FastAPI, LangChain, and Ollama. Delivered enterprise solutions at TCS including natural-language SQL tools, observability MCP servers, and AI chat platforms. Strong in system integration, RBAC/security, Docker, monitoring, production troubleshooting, and cross-team collaboration. Seeking to deliver customer-facing AI and hybrid IT solutions in onsite consulting environments.
+
+---
+
+## PROFESSIONAL EXPERIENCE
+
+**Software Engineer | Tata Consultancy Services** — Mumbai, India | *Jan 2025 – Present*
+
+- Built an **NL-to-SQL assistant** using Python, LangChain, Ollama, and ChromaDB, enabling business and ops teams to generate reports via conversational queries and reducing manual SQL effort.
+- Developed a **Grafana MCP Server** exposing metrics and logs as MCP tools, enabling AI assistants to query observability data through standardized tool calls across applications.
+- Customized **OpenWebUI** with locally hosted Ollama models, making AI accessible to developers and business users through a production-ready chat interface.
+- Set up and maintained **monitoring dashboards** (Grafana Alloy, Prometheus, Loki) for **5 production trading applications**; partnered with dev and support teams on incident troubleshooting and system stability.
+- Automated daily operational workflows (PRE, POST, EOD, INTRADAY) using **Jenkins Groovy pipelines**, saving several hours of manual effort per day for the support team.
+- Implemented **Keycloak-based Active Directory authentication** and **mTLS via NGINX** for secure service-to-service communication in internal platforms.
+
+---
+
+## TECHNICAL SKILLS
+
+**AI/ML:** LangChain, LangGraph, RAG, MCP (Model Context Protocol), Ollama, Qdrant, ChromaDB, PGVector, AWS Bedrock, multi-agent workflows, Text-to-SQL  
+**Backend:** Python, FastAPI, Django, REST APIs, SQL, JWT, OAuth 2.1, RBAC, async job processing  
+**DevOps & Cloud:** Docker, Jenkins, GitHub Actions, AWS (EC2, S3), Linux, Ansible, Terraform, NGINX, mTLS  
+**Data & Observability:** PostgreSQL, MySQL, MongoDB, Redis, Prometheus, Grafana Alloy, Loki, LangSmith  
+**Frontend & Tools:** React.js, Git, Postman
+
+---
+
+## PROJECTS
+
+**Orchestrator — Multi-Agent AI Platform** | *Python, FastAPI, LangChain, Qdrant, Redis, PostgreSQL, React, Docker, MCP*  
+github.com/kunalp02/Accuknox
+
+- Built a **multi-tenant SaaS orchestrator** for agent workflows, async execution, and knowledge-base RAG using FastAPI, ARQ workers, Qdrant, and an OpenAI-compatible LLM gateway (Ollama/Bifrost).
+- Implemented **multi-agent workflows** (agent, supervisor, branch, parallel, human-in-the-loop) with async invoke, run tracking, and SSE event streaming.
+- Integrated **MCP HTTP connections** for external tool discovery and agent tool binding in production-style agent execution loops.
+- Designed **RBAC**, scoped API keys, org isolation, and encrypted secret storage; containerized stack with Docker Compose and CI via GitHub Actions.
+
+**MCP AuthN/AuthZ — Secure MCP Client & Server** | *Python, FastAPI, OAuth 2.1, RFC 9728/8693, JWT, RBAC*  
+github.com/kunalp02/Accuknox
+
+- Built standalone **MCP client and server** with inbound JSON-RPC (`tools/list`, `tools/call`) and outbound HTTP MCP client for secure tool invocation.
+- Implemented **authentication and authorization**: JWT, scoped API keys, RBAC (owner/admin/builder/viewer), tool allowlists, and audit logging at invoke time.
+- Added **industry-standard OAuth flows**: RFC 9728 protected-resource metadata, PKCE, token refresh, and **OBO token exchange** (RFC 8693 + Microsoft Entra format).
+- Wrote automated tests (pytest) for RBAC, policy enforcement, and OBO exchange; extends production MCP and Keycloak auth work from TCS.
+
+---
+
+## EDUCATION
+
+**B.E. Computer Engineering** | Shram Sadhana Bombay Trust College of Engineering & Technology, Jalgaon | *2020 – 2024*  
+CGPA: 8.84/10
+
+---
+
+## CERTIFICATIONS
+
+Docker Foundations Professional Certificate (Docker) | Technical Content Engineer Certificate (GeeksForGeeks)
+
+---
+
+*References and additional work samples available upon request.*
