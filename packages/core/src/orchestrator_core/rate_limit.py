@@ -1,10 +1,13 @@
 """Redis-backed rate limiting."""
 
+import logging
 import time
 
 import redis.asyncio as redis
 
 from orchestrator_core.config import settings
+
+logger = logging.getLogger(__name__)
 
 
 async def check_rate_limit(
@@ -24,5 +27,7 @@ async def check_rate_limit(
             await client.expire(key, 120)
         if count > limit_per_minute:
             raise ValueError("Rate limit exceeded")
+    except (redis.ConnectionError, OSError) as exc:
+        logger.warning("Rate limit skipped (Redis unavailable): %s", exc)
     finally:
         await client.aclose()
