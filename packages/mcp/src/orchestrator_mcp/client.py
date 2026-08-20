@@ -2,6 +2,7 @@ from dataclasses import dataclass
 from typing import Any
 
 import httpx
+from orchestrator_core.models import McpConnection
 from orchestrator_core.security import decrypt_secret
 
 
@@ -9,6 +10,14 @@ from orchestrator_core.security import decrypt_secret
 class McpAuth:
     auth_type: str  # bearer | api_key_header
     credentials: str  # plaintext after decrypt
+
+
+@dataclass
+class McpHttpOptions:
+    """Per-connection HTTP client settings (self-signed certs, corporate proxy)."""
+
+    verify_ssl: bool = True
+    trust_env: bool = False
 
 
 @dataclass
@@ -21,10 +30,17 @@ class McpTool:
 class McpHttpClient:
     """Minimal MCP client over HTTP JSON-RPC (Streamable HTTP / legacy HTTP)."""
 
-    def __init__(self, base_url: str, auth: McpAuth | None = None, timeout: float = 30.0):
+    def __init__(
+        self,
+        base_url: str,
+        auth: McpAuth | None = None,
+        timeout: float = 30.0,
+        http_options: McpHttpOptions | None = None,
+    ):
         self.base_url = base_url.rstrip("/")
         self.auth = auth
         self.timeout = timeout
+        self.http_options = http_options or McpHttpOptions()
         self._request_id = 0
 
     def _headers(self) -> dict[str, str]:
@@ -40,6 +56,13 @@ class McpHttpClient:
                 headers[name.strip()] = value.strip()
         return headers
 
+    def _http_client(self) -> httpx.AsyncClient:
+        return httpx.AsyncClient(
+            verify=self.http_options.verify_ssl,
+            trust_env=self.http_options.trust_env,
+            timeout=self.timeout,
+        )
+
     async def _rpc(self, method: str, params: dict | None = None) -> Any:
         self._request_id += 1
         payload = {
@@ -48,7 +71,7 @@ class McpHttpClient:
             "method": method,
             "params": params or {},
         }
-        async with httpx.AsyncClient(timeout=self.timeout) as client:
+        async with self._http_client() as client:
             response = await client.post(
                 self.base_url,
                 json=payload,
@@ -92,9 +115,29 @@ def auth_from_encrypted(auth_type: str, encrypted: str | None) -> McpAuth | None
     return McpAuth(auth_type=auth_type, credentials=decrypt_secret(encrypted))
 
 
-async def test_connection(base_url: str, auth: McpAuth | None) -> tuple[bool, list[McpTool], str]:
+def http_options_from_connection(connection: McpConnection) -> McpHttpOptions:
+    return McpHttpOptions(
+        verify_ssl=connection.verify_ssl,
+        trust_env=connection.trust_env,
+    )
+
+
+def client_from_connection(connection: McpConnection) -> McpHttpClient:
+    auth = auth_from_encrypted(connection.auth_type or "", connection.auth_credentials_encrypted)
+    return McpHttpClient(
+        connection.base_url,
+        auth,
+        http_options=http_options_from_connection(connection),
+    )
+
+
+async def test_connection(
+    base_url: str,
+    auth: McpAuth | None,
+    http_options: McpHttpOptions | None = None,
+) -> tuple[bool, list[McpTool], str]:
     try:
-        client = McpHttpClient(base_url, auth)
+        client = McpHttpClient(base_url, auth, http_options=http_options)
         tools = await client.list_tools()
         return True, tools, "healthy"
     except Exception as e:

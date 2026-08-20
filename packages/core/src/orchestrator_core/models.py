@@ -198,6 +198,8 @@ class McpConnection(Base):
     auth_credentials_encrypted: Mapped[str | None] = mapped_column(Text, nullable=True)
     tool_allowlist: Mapped[list] = mapped_column(JSONB, default=list)
     discovered_tools: Mapped[list] = mapped_column(JSONB, default=list)
+    verify_ssl: Mapped[bool] = mapped_column(Boolean, default=True)
+    trust_env: Mapped[bool] = mapped_column(Boolean, default=False)
     health_status: Mapped[str] = mapped_column(String(50), default="unknown")
     last_error: Mapped[str | None] = mapped_column(Text, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)

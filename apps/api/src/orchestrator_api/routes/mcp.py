@@ -7,7 +7,7 @@ from orchestrator_core.database import get_session
 from orchestrator_core.models import McpConnection
 from orchestrator_core.rbac import has_permission
 from orchestrator_core.security import encrypt_secret
-from orchestrator_mcp.client import auth_from_encrypted, test_connection
+from orchestrator_mcp.client import auth_from_encrypted, http_options_from_connection, test_connection
 from pydantic import BaseModel, Field
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -21,6 +21,8 @@ class McpConnectionCreate(BaseModel):
     auth_type: str | None = None  # bearer | api_key_header
     auth_credentials: str | None = None
     tool_allowlist: list[str] = []
+    verify_ssl: bool = True
+    trust_env: bool = False
 
 
 class McpConnectionUpdate(BaseModel):
@@ -29,6 +31,8 @@ class McpConnectionUpdate(BaseModel):
     auth_type: str | None = None
     auth_credentials: str | None = None
     tool_allowlist: list[str] | None = None
+    verify_ssl: bool | None = None
+    trust_env: bool | None = None
 
 
 class McpConnectionResponse(BaseModel):
@@ -38,6 +42,8 @@ class McpConnectionResponse(BaseModel):
     auth_type: str | None
     tool_allowlist: list[str]
     discovered_tools: list
+    verify_ssl: bool
+    trust_env: bool
     health_status: str
     last_error: str | None
 
@@ -57,6 +63,8 @@ def _to_response(c: McpConnection) -> McpConnectionResponse:
         auth_type=c.auth_type,
         tool_allowlist=c.tool_allowlist or [],
         discovered_tools=c.discovered_tools or [],
+        verify_ssl=c.verify_ssl,
+        trust_env=c.trust_env,
         health_status=c.health_status,
         last_error=c.last_error,
     )
@@ -92,6 +100,8 @@ async def create_connection(
         auth_type=body.auth_type,
         auth_credentials_encrypted=encrypted,
         tool_allowlist=body.tool_allowlist,
+        verify_ssl=body.verify_ssl,
+        trust_env=body.trust_env,
     )
     session.add(conn)
     await session.commit()
@@ -127,6 +137,10 @@ async def update_connection(
         conn.auth_credentials_encrypted = encrypt_secret(body.auth_credentials) if body.auth_credentials else None
     if body.tool_allowlist is not None:
         conn.tool_allowlist = body.tool_allowlist
+    if body.verify_ssl is not None:
+        conn.verify_ssl = body.verify_ssl
+    if body.trust_env is not None:
+        conn.trust_env = body.trust_env
     conn.updated_at = datetime.now(UTC)
     await session.commit()
     await session.refresh(conn)
@@ -151,7 +165,8 @@ async def test_mcp_connection(
         raise HTTPException(status_code=404, detail="Connection not found")
 
     mcp_auth = auth_from_encrypted(conn.auth_type or "", conn.auth_credentials_encrypted)
-    ok, tools, msg = await test_connection(conn.base_url, mcp_auth)
+    http_options = http_options_from_connection(conn)
+    ok, tools, msg = await test_connection(conn.base_url, mcp_auth, http_options)
     conn.health_status = "healthy" if ok else "unhealthy"
     conn.last_error = None if ok else msg
     if ok:

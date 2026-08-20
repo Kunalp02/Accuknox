@@ -179,6 +179,8 @@ export interface McpConnection {
   auth_type?: string;
   tool_allowlist: string[];
   discovered_tools: Array<{ name: string; description?: string }>;
+  verify_ssl: boolean;
+  trust_env: boolean;
   health_status: string;
   last_error?: string;
   auth_credentials?: string;

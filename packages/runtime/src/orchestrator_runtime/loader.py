@@ -3,8 +3,7 @@
 import uuid
 
 from orchestrator_core.models import Agent, McpConnection
-from orchestrator_core.security import decrypt_secret
-from orchestrator_mcp.client import McpAuth, McpHttpClient
+from orchestrator_mcp.client import McpHttpClient, client_from_connection
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -23,13 +22,7 @@ async def load_mcp_clients(
     connections = result.scalars().all()
     clients: dict[str, McpHttpClient] = {}
     for conn in connections:
-        auth = None
-        if conn.auth_type and conn.auth_credentials_encrypted:
-            auth = McpAuth(
-                auth_type=conn.auth_type,
-                credentials=decrypt_secret(conn.auth_credentials_encrypted),
-            )
-        clients[str(conn.id)] = McpHttpClient(conn.base_url, auth)
+        clients[str(conn.id)] = client_from_connection(conn)
     return clients
 
 

@@ -16,6 +16,8 @@ export default function McpPage() {
     auth_type: "bearer",
     auth_credentials: "",
     tool_allowlist: "",
+    verify_ssl: true,
+    trust_env: false,
   });
 
   const load = () => api.listMcpConnections().then(setConnections);
@@ -33,8 +35,18 @@ export default function McpPage() {
       tool_allowlist: form.tool_allowlist
         ? form.tool_allowlist.split(",").map((s) => s.trim()).filter(Boolean)
         : [],
+      verify_ssl: form.verify_ssl,
+      trust_env: form.trust_env,
     });
-    setForm({ name: "", base_url: "", auth_type: "bearer", auth_credentials: "", tool_allowlist: "" });
+    setForm({
+      name: "",
+      base_url: "",
+      auth_type: "bearer",
+      auth_credentials: "",
+      tool_allowlist: "",
+      verify_ssl: true,
+      trust_env: false,
+    });
     await load();
   };
 
@@ -76,6 +88,25 @@ export default function McpPage() {
             <Field label="Tool allowlist (comma-separated, optional)">
               <Input value={form.tool_allowlist} onChange={(e) => setForm({ ...form, tool_allowlist: e.target.value })} />
             </Field>
+            <div className="space-y-2 rounded-lg border border-border p-3">
+              <p className="text-sm font-medium text-gray-700">HTTP client options</p>
+              <label className="flex items-center gap-2 text-sm text-gray-600">
+                <input
+                  type="checkbox"
+                  checked={form.verify_ssl}
+                  onChange={(e) => setForm({ ...form, verify_ssl: e.target.checked })}
+                />
+                Verify SSL certificates (uncheck for self-signed, like curl -k)
+              </label>
+              <label className="flex items-center gap-2 text-sm text-gray-600">
+                <input
+                  type="checkbox"
+                  checked={form.trust_env}
+                  onChange={(e) => setForm({ ...form, trust_env: e.target.checked })}
+                />
+                Use system HTTP proxy (trust_env; leave off for direct connection)
+              </label>
+            </div>
             <Button type="button" onClick={create} disabled={!form.name || !form.base_url}>
               Create
             </Button>
@@ -95,6 +126,9 @@ export default function McpPage() {
                   </Badge>
                 </div>
                 <p className="mt-1 font-mono text-xs text-gray-500">{c.base_url}</p>
+                <p className="mt-1 text-xs text-gray-500">
+                  SSL verify: {c.verify_ssl ? "on" : "off"} · Proxy: {c.trust_env ? "system" : "direct"}
+                </p>
                 {c.discovered_tools?.length > 0 && (
                   <p className="mt-2 text-sm text-gray-600">
                     Tools: {c.discovered_tools.map((t) => t.name).join(", ")}
