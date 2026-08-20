@@ -1,5 +1,6 @@
 import asyncio
 import os
+import socket
 import uuid
 
 import pytest
@@ -12,8 +13,30 @@ os.environ.setdefault(
 os.environ.setdefault("REDIS_URL", "redis://localhost:6379/0")
 os.environ.setdefault("JWT_SECRET", "test-jwt-secret-for-integration-tests")
 os.environ.setdefault("ENCRYPTION_KEY", "test-encryption-key-32-bytes!!")
+os.environ.setdefault("LLM_MOCK_MODE", "true")
+os.environ.setdefault("SYNC_WORKER", "true")
 
 from orchestrator_api.main import app
+
+
+def _port_open(host: str, port: int) -> bool:
+    try:
+        with socket.create_connection((host, port), timeout=1):
+            return True
+    except OSError:
+        return False
+
+
+postgres_available = _port_open("127.0.0.1", 5432)
+
+
+def pytest_collection_modifyitems(config, items):
+    if postgres_available:
+        return
+    skip = pytest.mark.skip(reason="PostgreSQL not available on localhost:5432")
+    for item in items:
+        if item.get_closest_marker("requires_postgres"):
+            item.add_marker(skip)
 
 
 @pytest.fixture(scope="session")

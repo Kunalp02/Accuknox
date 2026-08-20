@@ -120,13 +120,9 @@ async def upload_document(
     doc.storage_path = local_path
     await session.commit()
 
-    from arq import create_pool
-    from arq.connections import RedisSettings
+    from orchestrator_api.jobs import enqueue_job
 
-    redis_settings = RedisSettings.from_dsn(settings.redis_url)
-    pool = await create_pool(redis_settings)
-    await pool.enqueue_job("index_document", str(doc.id))
-    await pool.aclose()
+    await enqueue_job("index_document", doc.id)
 
     return DocumentResponse(
         id=str(doc.id), filename=doc.filename, status=doc.status, chunk_count=doc.chunk_count

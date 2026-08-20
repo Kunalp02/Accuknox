@@ -21,10 +21,27 @@ def normalize_gateway_base_url(url: str) -> str:
     return normalized
 
 
+_CLOUD_HOSTS = ("ollama.com", "api.openai.com", "openai.com")
+
+
+def is_cloud_gateway(base_url: str) -> bool:
+    normalized = base_url.lower()
+    return any(host in normalized for host in _CLOUD_HOSTS)
+
+
+def resolve_gateway_api_key(base_url: str, stored_key: str | None, platform_key: str) -> str:
+    if stored_key:
+        return stored_key
+    if is_cloud_gateway(base_url) and platform_key in ("", "ollama"):
+        return ""
+    return platform_key
+
+
 def platform_gateway_config() -> GatewayConfig:
+    base_url = normalize_gateway_base_url(settings.llm_gateway_url)
     return GatewayConfig(
-        base_url=normalize_gateway_base_url(settings.llm_gateway_url),
-        api_key=settings.llm_gateway_key,
+        base_url=base_url,
+        api_key=resolve_gateway_api_key(base_url, None, settings.llm_gateway_key),
         default_model=settings.llm_default_model,
         embed_model=settings.embed_model,
     )
@@ -56,6 +73,15 @@ async def chat_completion(
     messages: list[dict],
     temperature: float = 0.7,
 ) -> tuple[str, dict]:
+    if settings.llm_mock_mode:
+        last_user = next(
+            (m["content"] for m in reversed(messages) if m.get("role") == "user"),
+            "",
+        )
+        content = f"[mock:{model}] {last_user}"
+        usage = {"tokens_in": len(str(messages)), "tokens_out": len(content)}
+        return content, usage
+
     response = await client.chat.completions.create(
         model=model,
         messages=messages,
@@ -77,5 +103,8 @@ async def embed_texts(
     model: str,
     texts: list[str],
 ) -> list[list[float]]:
+    if settings.llm_mock_mode:
+        return [[0.1] * 8 for _ in texts]
+
     response = await client.embeddings.create(model=model, input=texts)
     return [item.embedding for item in response.data]

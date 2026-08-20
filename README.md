@@ -62,6 +62,22 @@ docker compose -f docker-compose.prod.yml up -d --build
 
 Open http://localhost (web UI proxies `/v1` to API)
 
+### Testing
+
+```bash
+# Unit tests (no Postgres required for most tests)
+LLM_MOCK_MODE=true SYNC_WORKER=true uv run pytest tests/ -v
+
+# Full API integration tests (requires Postgres on localhost:5432)
+cd infra && docker compose up -d
+./scripts/migrate.sh
+LLM_MOCK_MODE=true SYNC_WORKER=true ./scripts/test-all-apis.sh
+```
+
+**Local dev without a separate worker:** set `SYNC_WORKER=true` in `.env`. Jobs run in-process when Redis is unavailable or sync mode is enabled.
+
+**Test without an LLM gateway:** set `LLM_MOCK_MODE=true` for canned responses.
+
 ### Migrations
 
 ```bash

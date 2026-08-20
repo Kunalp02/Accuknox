@@ -95,6 +95,8 @@ export default function WorkflowsPage() {
   const [events, setEvents] = useState<string[]>([]);
   const [resumeInput, setResumeInput] = useState("");
   const [pendingRunId, setPendingRunId] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [invokeLoading, setInvokeLoading] = useState(false);
 
   const load = async () => {
     const [w, a, m] = await Promise.all([
@@ -201,37 +203,57 @@ export default function WorkflowsPage() {
   const selectedEdge = edges.find((e) => e.id === selectedEdgeId);
   const nodeIds = nodes.map((n) => n.id);
 
+  const deleteNode = (nodeId: string) => {
+    setNodes((nds) => nds.filter((n) => n.id !== nodeId));
+    setEdges((eds) => eds.filter((e) => e.source !== nodeId && e.target !== nodeId));
+    if (entry === nodeId) setEntry("");
+    if (selectedNodeId === nodeId) setSelectedNodeId(null);
+  };
+
   const invoke = async () => {
     if (!selected || !testInput.trim()) return;
     setOutput("");
     setEvents([]);
-    const { run_id } = await api.invokeWorkflow(selected.id, {
-      input: testInput,
-      webhook_url: webhookUrl.trim() || undefined,
-      webhook_secret: webhookSecret.trim() || undefined,
-    });
-    setEvents((e) => [...e, `started ${run_id}`]);
-    streamRunEvents(run_id, (type, data) => {
-      setEvents((e) => [...e, `${type}: ${JSON.stringify(data)}`]);
-      if (type === "run.completed" && data && typeof data === "object" && "message" in data) {
-        setOutput(String((data as { message: string }).message));
-      }
-      if (type === "run.awaiting_input") setPendingRunId(run_id);
-    });
-    const poll = setInterval(async () => {
-      const run = await api.getRun(run_id);
-      if (run.status === "completed") {
-        clearInterval(poll);
-        if (run.output?.message) setOutput(run.output.message);
-      } else if (run.status === "failed") {
-        clearInterval(poll);
-        setOutput(run.error || "failed");
-      } else if (run.status === "awaiting_input") {
-        clearInterval(poll);
-        setPendingRunId(run_id);
-        setOutput("Awaiting human input...");
-      }
-    }, 1500);
+    setInvokeLoading(true);
+    try {
+      await save();
+      const { run_id } = await api.invokeWorkflow(selected.id, {
+        input: testInput,
+        webhook_url: webhookUrl.trim() || undefined,
+        webhook_secret: webhookSecret.trim() || undefined,
+      });
+      setEvents((e) => [...e, `started ${run_id}`]);
+      streamRunEvents(run_id, (type, data) => {
+        setEvents((e) => [...e, `${type}: ${JSON.stringify(data)}`]);
+        if (type === "run.completed" && data && typeof data === "object" && "message" in data) {
+          setOutput(String((data as { message: string }).message));
+        }
+        if (type === "run.failed" && data && typeof data === "object" && "error" in data) {
+          setOutput(String((data as { error: string }).error));
+        }
+        if (type === "run.awaiting_input") setPendingRunId(run_id);
+      });
+      const poll = setInterval(async () => {
+        const run = await api.getRun(run_id);
+        if (run.status === "completed") {
+          clearInterval(poll);
+          if (run.output?.message) setOutput(run.output.message);
+          setInvokeLoading(false);
+        } else if (run.status === "failed") {
+          clearInterval(poll);
+          setOutput(run.error || "failed");
+          setInvokeLoading(false);
+        } else if (run.status === "awaiting_input") {
+          clearInterval(poll);
+          setPendingRunId(run_id);
+          setOutput("Awaiting human input...");
+          setInvokeLoading(false);
+        }
+      }, 1500);
+    } catch (err) {
+      setOutput(err instanceof Error ? err.message : "Invoke failed");
+      setInvokeLoading(false);
+    }
   };
 
   const resume = async () => {
@@ -389,7 +411,9 @@ export default function WorkflowsPage() {
                   <Input type="password" value={webhookSecret} onChange={(e) => setWebhookSecret(e.target.value)} />
                 </Field>
               </div>
-              <Button type="button" size="sm" onClick={invoke}>Invoke</Button>
+              <Button type="button" size="sm" onClick={invoke} disabled={invokeLoading || !testInput.trim()}>
+                {invokeLoading ? "Running…" : "Invoke"}
+              </Button>
               {pendingRunId && (
                 <div className="space-y-2">
                   <Input placeholder="Human response…" value={resumeInput} onChange={(e) => setResumeInput(e.target.value)} />
@@ -399,6 +423,11 @@ export default function WorkflowsPage() {
               <div className="min-h-[60px] rounded-lg border border-border bg-gray-50 p-3 text-sm">
                 {output || "…"}
               </div>
+              {events.length > 0 && (
+                <pre className="max-h-32 overflow-y-auto rounded-lg border border-border bg-gray-50 p-2 font-mono text-[11px] text-gray-500 whitespace-pre-wrap">
+                  {events.join("\n")}
+                </pre>
+              )}
             </div>
           ) : (
             <p className="p-4 text-sm text-gray-500">Select or create a workflow</p>
@@ -408,13 +437,18 @@ export default function WorkflowsPage() {
         <Card>
           <CardHeader title="Inspector" />
           {selectedNode && selectedNodeId ? (
-            <NodeConfigPanel
-              node={(selectedNode.data as { node: WorkflowNodeData }).node}
-              nodeIds={nodeIds}
-              agents={agents}
-              mcpConnections={mcpConnections}
-              onChange={(updated) => updateNodeData(selectedNodeId, updated)}
-            />
+            <div className="space-y-4">
+              <NodeConfigPanel
+                node={(selectedNode.data as { node: WorkflowNodeData }).node}
+                nodeIds={nodeIds}
+                agents={agents}
+                mcpConnections={mcpConnections}
+                onChange={(updated) => updateNodeData(selectedNodeId, updated)}
+              />
+              <Button type="button" variant="danger" size="sm" onClick={() => deleteNode(selectedNodeId)}>
+                Delete node
+              </Button>
+            </div>
           ) : selectedEdge && selectedEdgeId ? (
             <div className="space-y-3">
               <p className="font-mono text-sm text-gray-600">

@@ -2,12 +2,11 @@ import json
 import uuid
 from datetime import datetime
 
-from arq import create_pool
-from arq.connections import RedisSettings
 from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import StreamingResponse
 from orchestrator_api.deps import AuthContext, get_auth_context
 from orchestrator_api.guards import check_resource_scope, enforce_rate_limit
+from orchestrator_api.jobs import enqueue_job
 from orchestrator_core.config import settings
 from orchestrator_core.database import get_session
 from orchestrator_core.models import Agent, Run, Workflow
@@ -85,10 +84,7 @@ def _check(auth: AuthContext, permission: str) -> None:
 
 
 async def _enqueue_job(job_name: str, run_id: uuid.UUID) -> None:
-    redis_settings = RedisSettings.from_dsn(settings.redis_url)
-    pool = await create_pool(redis_settings)
-    await pool.enqueue_job(job_name, str(run_id))
-    await pool.aclose()
+    await enqueue_job(job_name, run_id)
 
 
 def _run_response(run: Run) -> RunResponse:

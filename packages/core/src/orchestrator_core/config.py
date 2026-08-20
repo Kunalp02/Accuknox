@@ -29,6 +29,11 @@ class Settings(BaseSettings):
     llm_gateway_verify_ssl: bool = True
     llm_gateway_trust_env: bool = False
 
+    # Run worker jobs in-process (useful when Redis/worker not running)
+    sync_worker: bool = False
+    # Return canned LLM responses without calling a gateway (tests/dev)
+    llm_mock_mode: bool = False
+
     api_host: str = "0.0.0.0"
     api_port: int = 8000
     cors_origins: str = "http://localhost:5173"

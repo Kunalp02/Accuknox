@@ -12,6 +12,7 @@ from orchestrator_llm.client import (
     GatewayConfig,
     normalize_gateway_base_url,
     platform_gateway_config,
+    resolve_gateway_api_key,
 )
 
 
@@ -23,7 +24,7 @@ async def get_gateway_for_org(session: AsyncSession, org_id: UUID) -> GatewayCon
     if not row:
         return platform_gateway_config()
 
-    api_key = settings.llm_gateway_key
+    api_key = resolve_gateway_api_key(row.base_url, None, settings.llm_gateway_key)
     if row.api_key_encrypted:
         api_key = decrypt_secret(row.api_key_encrypted)
 

@@ -114,6 +114,16 @@ async def execute_agent(
     on_token: Callable[[str, dict], Awaitable[None]] | None = None,
     mcp_clients: dict[str, McpHttpClient] | None = None,
 ) -> RunResult:
+    from orchestrator_core.config import settings
+
+    if settings.llm_mock_mode:
+        content = f"[mock:{agent.model}] {user_input}"
+        if on_token:
+            await on_token("message.start", {"role": "assistant"})
+            await on_token("message.delta", {"content": content})
+            await on_token("message.end", {})
+        return RunResult(output=content, metrics={"tokens_in": 10, "tokens_out": 10})
+
     client = create_openai_client(gateway)
     messages: list[dict] = [{"role": "system", "content": agent.system_prompt}]
 
