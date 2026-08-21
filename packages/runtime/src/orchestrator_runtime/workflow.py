@@ -67,6 +67,44 @@ def _eval_condition(condition: str, state: WorkflowState) -> bool:
     return bool(state.variables.get(condition))
 
 
+def _parse_supervisor_route(content: str, children: list[str]) -> str:
+    """Pick the child node id referenced in supervisor LLM output."""
+    if not children:
+        return ""
+    # Longest id first avoids partial substring matches between child ids.
+    for child in sorted(children, key=len, reverse=True):
+        if child in content:
+            return child
+    lower = content.lower()
+    for child in sorted(children, key=len, reverse=True):
+        if child.lower() in lower:
+            return child
+    return children[0]
+
+
+def _select_supervisor_next(
+    edges: list[dict], route: str, children: list[str], state: WorkflowState
+) -> str | None:
+    """Resolve the next node after a supervisor decision."""
+    if route in children:
+        return route
+
+    for edge in edges:
+        if edge.get("to") == route:
+            return edge.get("to")
+
+    for edge in edges:
+        cond = (edge.get("condition") or "").strip()
+        if cond and _eval_condition(cond, state):
+            return edge.get("to")
+
+    unconditional = [e for e in edges if not (e.get("condition") or "").strip()]
+    if len(unconditional) == 1:
+        return unconditional[0].get("to")
+
+    return None
+
+
 async def execute_workflow(
     graph: dict,
     gateway: GatewayConfig,
@@ -136,11 +174,7 @@ async def execute_workflow(
                 {"role": "user", "content": state.messages[-1]["content"]},
             ]
             content, usage = await chat_completion(client, supervisor_model, messages, 0.3)
-            route = children[0] if children else ""
-            for child in children:
-                if child in content:
-                    route = child
-                    break
+            route = _parse_supervisor_route(content, children)
             state.variables["route"] = route
             state.node_outputs[node_id] = {"route": route, "raw": content}
             metrics["tokens_in"] += usage.get("tokens_in", 0)
@@ -149,17 +183,12 @@ async def execute_workflow(
             await emit("step.supervisor", {"route": route})
 
             edges = _outgoing_edges(wf, node_id)
-            next_id = None
-            for edge in edges:
-                if edge.get("to") == route or _eval_condition(edge.get("condition", ""), state):
-                    next_id = edge.get("to")
-                    break
+            next_id = _select_supervisor_next(edges, route, children, state)
+            await emit("step.end", {"node_id": node_id})
             if next_id:
                 node_id = next_id
-                await emit("step.end", {"node_id": node_id})
                 continue
-            node_id = route if route in children else None
-            await emit("step.end", {"node_id": node_id})
+            node_id = None
             continue
 
         elif node_type == "tool":

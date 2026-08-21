@@ -120,7 +120,101 @@ async def test_supervisor_routes_to_child(gateway, agents):
         )
 
     assert state.variables.get("route") == "researcher"
+    assert "researcher" in state.node_outputs
     assert metrics["steps"] >= 2
+
+
+@pytest.mark.asyncio
+async def test_supervisor_honors_route_when_first_edge_unconditional(gateway, agents):
+    """Regression: unconditional first edge must not override an explicit writer route."""
+    graph = {
+        "entry": "supervisor_1",
+        "nodes": [
+            {
+                "id": "supervisor_1",
+                "type": "supervisor",
+                "children": ["researcher_node", "writer_node"],
+            },
+            {"id": "researcher_node", "type": "agent", "agent_id": "agent-1"},
+            {"id": "writer_node", "type": "agent", "agent_id": "agent-2"},
+        ],
+        "edges": [
+            {"from": "supervisor_1", "to": "researcher_node"},
+            {
+                "from": "supervisor_1",
+                "to": "writer_node",
+                "condition": "route == writer_node",
+            },
+        ],
+    }
+
+    async def fake_chat(client, model, messages, temperature=0.7):
+        return "writer_node", {"tokens_in": 3, "tokens_out": 1}
+
+    async def fake_execute_agent(gw, agent_cfg, user_input, org_id, **kwargs):
+        marker = "[WRITER_AGENT]" if agent_cfg.system_prompt == "Writer" else "[RESEARCH_AGENT]"
+        return RunResult(output=marker, metrics={"tokens_in": 1, "tokens_out": 1})
+
+    with (
+        patch("orchestrator_runtime.workflow.chat_completion", side_effect=fake_chat),
+        patch("orchestrator_runtime.workflow.execute_agent", side_effect=fake_execute_agent),
+    ):
+        state, metrics = await execute_workflow(
+            graph,
+            gateway,
+            uuid.uuid4(),
+            "Call writing agent",
+            {},
+            agents,
+            {},
+        )
+
+    assert state.variables.get("route") == "writer_node"
+    assert "writer_node" in state.node_outputs
+    assert "researcher_node" not in state.node_outputs
+    assert state.last_output == "[WRITER_AGENT]"
+    assert metrics["steps"] == 2
+
+
+@pytest.mark.asyncio
+async def test_supervisor_routes_without_edges(gateway, agents):
+    graph = {
+        "entry": "supervisor_1",
+        "nodes": [
+            {
+                "id": "supervisor_1",
+                "type": "supervisor",
+                "children": ["researcher_node", "writer_node"],
+            },
+            {"id": "researcher_node", "type": "agent", "agent_id": "agent-1"},
+            {"id": "writer_node", "type": "agent", "agent_id": "agent-2"},
+        ],
+        "edges": [],
+    }
+
+    async def fake_chat(client, model, messages, temperature=0.7):
+        return "writer_node", {"tokens_in": 3, "tokens_out": 1}
+
+    async def fake_execute_agent(gw, agent_cfg, user_input, org_id, **kwargs):
+        return RunResult(output=f"output from {agent_cfg.system_prompt}", metrics={"tokens_in": 1, "tokens_out": 1})
+
+    with (
+        patch("orchestrator_runtime.workflow.chat_completion", side_effect=fake_chat),
+        patch("orchestrator_runtime.workflow.execute_agent", side_effect=fake_execute_agent),
+    ):
+        state, _ = await execute_workflow(
+            graph,
+            gateway,
+            uuid.uuid4(),
+            "Call writing agent",
+            {},
+            agents,
+            {},
+        )
+
+    assert state.variables.get("route") == "writer_node"
+    assert "writer_node" in state.node_outputs
+    assert "researcher_node" not in state.node_outputs
 
 
 @pytest.mark.asyncio
