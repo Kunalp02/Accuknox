@@ -128,9 +128,25 @@ export default function WorkflowsPage() {
   };
 
   const onConnect = useCallback(
-    (params: Connection) =>
-      setEdges((eds) => addEdge({ ...params, style: { stroke: "#4F46E5" } }, eds)),
-    [setEdges]
+    (params: Connection) => {
+      const sourceNode = nodes.find((n) => n.id === params.source);
+      const sourceType = (sourceNode?.data as { node?: WorkflowNodeData } | undefined)?.node?.type;
+      const label =
+        sourceType === "supervisor" && params.target
+          ? `route == ${params.target}`
+          : undefined;
+      setEdges((eds) =>
+        addEdge(
+          {
+            ...params,
+            label,
+            style: { stroke: "#4F46E5" },
+          },
+          eds
+        )
+      );
+    },
+    [nodes, setEdges]
   );
 
   const updateNodeData = (nodeId: string, updated: WorkflowNodeData) => {
