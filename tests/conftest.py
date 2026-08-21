@@ -13,8 +13,11 @@ os.environ.setdefault(
 os.environ.setdefault("REDIS_URL", "redis://localhost:6379/0")
 os.environ.setdefault("JWT_SECRET", "test-jwt-secret-for-integration-tests")
 os.environ.setdefault("ENCRYPTION_KEY", "test-encryption-key-32-bytes!!")
-os.environ.setdefault("LLM_MOCK_MODE", "true")
-os.environ.setdefault("SYNC_WORKER", "true")
+# Override .env for deterministic tests (local gateway + mock LLM)
+os.environ["LLM_GATEWAY_URL"] = "http://localhost:11434/v1"
+os.environ["LLM_GATEWAY_KEY"] = "ollama"
+os.environ["LLM_MOCK_MODE"] = "true"
+os.environ["SYNC_WORKER"] = "true"
 
 from orchestrator_api.main import app
 
