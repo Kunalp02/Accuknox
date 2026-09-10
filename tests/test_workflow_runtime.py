@@ -218,6 +218,54 @@ async def test_supervisor_routes_without_edges(gateway, agents):
 
 
 @pytest.mark.asyncio
+async def test_agent_node_passes_mcp_clients(gateway, agents):
+    """Workflow agent nodes must forward MCP clients so bound tools work in graphs."""
+    from orchestrator_runtime.agent import McpToolBinding
+
+    mcp_client = object()
+    mcp_clients = {"conn-1": mcp_client}
+    agents["agent-1"] = AgentConfig(
+        system_prompt="Researcher with tools",
+        model="llama3.2",
+        temperature=0.7,
+        knowledge_base_ids=[],
+        mcp_tools=[
+            McpToolBinding(
+                connection_id="conn-1",
+                connection_name="github",
+                tool_name="create_issue",
+                description="Create a GitHub issue",
+                input_schema={"type": "object", "properties": {}},
+            )
+        ],
+    )
+    graph = {
+        "entry": "researcher",
+        "nodes": [{"id": "researcher", "type": "agent", "agent_id": "agent-1"}],
+        "edges": [],
+    }
+
+    captured: dict = {}
+
+    async def fake_execute_agent(gw, agent_cfg, user_input, org_id, **kwargs):
+        captured["mcp_clients"] = kwargs.get("mcp_clients")
+        return RunResult(output="tool result", metrics={"tokens_in": 1, "tokens_out": 1})
+
+    with patch("orchestrator_runtime.workflow.execute_agent", side_effect=fake_execute_agent):
+        await execute_workflow(
+            graph,
+            gateway,
+            uuid.uuid4(),
+            "use the tool",
+            {},
+            agents,
+            mcp_clients,
+        )
+
+    assert captured["mcp_clients"] is mcp_clients
+
+
+@pytest.mark.asyncio
 async def test_human_node_pauses(gateway, agents):
     graph = {
         "entry": "human_1",

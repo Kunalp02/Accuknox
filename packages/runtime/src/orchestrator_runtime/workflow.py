@@ -148,7 +148,12 @@ async def execute_workflow(
                 raise ValueError(f"Agent {agent_id} not configured for workflow")
             last_msg = state.messages[-1]["content"] if state.messages else user_input
             result = await execute_agent(
-                gateway, agent_cfg, last_msg, org_id, on_token=on_event
+                gateway,
+                agent_cfg,
+                last_msg,
+                org_id,
+                on_token=on_event,
+                mcp_clients=mcp_clients,
             )
             state.last_output = result.output
             state.node_outputs[node_id] = result.output
