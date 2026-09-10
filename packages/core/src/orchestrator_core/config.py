@@ -9,6 +9,8 @@ class Settings(BaseSettings):
 
     llm_gateway_url: str = "http://localhost:11434/v1"
     llm_gateway_key: str = "ollama"
+    # Ollama Cloud convention — used when LLM_GATEWAY_KEY is unset or the local placeholder.
+    ollama_api_key: str = ""
     llm_default_model: str = "llama3.2"
     embed_model: str = "nomic-embed-text"
 
@@ -41,6 +43,15 @@ class Settings(BaseSettings):
     @property
     def cors_origin_list(self) -> list[str]:
         return [o.strip() for o in self.cors_origins.split(",") if o.strip()]
+
+    @property
+    def effective_llm_gateway_key(self) -> str:
+        """Resolve platform gateway key, preferring OLLAMA_API_KEY for cloud setups."""
+        if self.llm_gateway_key and self.llm_gateway_key != "ollama":
+            return self.llm_gateway_key
+        if self.ollama_api_key:
+            return self.ollama_api_key
+        return self.llm_gateway_key
 
 
 settings = Settings()

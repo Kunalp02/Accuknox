@@ -142,6 +142,7 @@ export const api = {
     request<GatewaySettings>("/v1/settings/llm-gateway", { method: "PUT", body: JSON.stringify(data) }),
   clearGatewaySettings: () => request<void>("/v1/settings/llm-gateway", { method: "DELETE" }),
   testGateway: () => request<Record<string, unknown>>("/v1/settings/llm-gateway/test", { method: "POST" }),
+  listGatewayModels: () => request<{ models: string[]; mock_mode?: boolean }>("/v1/settings/llm-gateway/models"),
 };
 
 export interface Agent {

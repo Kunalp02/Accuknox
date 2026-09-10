@@ -37,11 +37,33 @@ def resolve_gateway_api_key(base_url: str, stored_key: str | None, platform_key:
     return platform_key
 
 
+def effective_api_key(config: GatewayConfig) -> str:
+    """Return the API key to send, or raise if a cloud gateway has no key."""
+    if config.api_key:
+        return config.api_key
+    if is_cloud_gateway(config.base_url):
+        raise ValueError(
+            "API key required for cloud gateways (e.g. https://ollama.com/v1). "
+            "Set OLLAMA_API_KEY or LLM_GATEWAY_KEY in .env, or save a key under Settings."
+        )
+    return "ollama"
+
+
+def normalize_model_for_gateway(model: str, base_url: str) -> str:
+    """
+    Ollama Cloud hosted API uses plain model ids (gpt-oss:120b).
+    Local Ollama offloads with a -cloud suffix (gpt-oss:120b-cloud).
+    """
+    if is_cloud_gateway(base_url) and model.endswith("-cloud"):
+        return model[: -len("-cloud")]
+    return model
+
+
 def platform_gateway_config() -> GatewayConfig:
     base_url = normalize_gateway_base_url(settings.llm_gateway_url)
     return GatewayConfig(
         base_url=base_url,
-        api_key=resolve_gateway_api_key(base_url, None, settings.llm_gateway_key),
+        api_key=resolve_gateway_api_key(base_url, None, settings.effective_llm_gateway_key),
         default_model=settings.llm_default_model,
         embed_model=settings.embed_model,
     )
@@ -62,7 +84,7 @@ def create_openai_http_client() -> httpx.AsyncClient:
 def create_openai_client(config: GatewayConfig) -> AsyncOpenAI:
     return AsyncOpenAI(
         base_url=normalize_gateway_base_url(config.base_url),
-        api_key=config.api_key or "ollama",
+        api_key=effective_api_key(config),
         http_client=create_openai_http_client(),
     )
 
@@ -83,7 +105,7 @@ async def chat_completion(
         return content, usage
 
     response = await client.chat.completions.create(
-        model=model,
+        model=normalize_model_for_gateway(model, str(client.base_url)),
         messages=messages,
         temperature=temperature,
     )
@@ -106,5 +128,15 @@ async def embed_texts(
     if settings.llm_mock_mode:
         return [[0.1] * 8 for _ in texts]
 
-    response = await client.embeddings.create(model=model, input=texts)
+    response = await client.embeddings.create(
+        model=normalize_model_for_gateway(model, str(client.base_url)),
+        input=texts,
+    )
     return [item.embedding for item in response.data]
+
+
+async def list_gateway_models(config: GatewayConfig) -> list[str]:
+    """List models from an OpenAI-compatible gateway (e.g. Ollama Cloud /v1/models)."""
+    client = create_openai_client(config)
+    response = await client.models.list()
+    return [item.id for item in response.data]

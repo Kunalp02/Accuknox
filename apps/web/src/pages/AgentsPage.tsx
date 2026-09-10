@@ -32,16 +32,19 @@ export default function AgentsPage() {
   const [output, setOutput] = useState("");
   const [events, setEvents] = useState<string[]>([]);
   const [running, setRunning] = useState(false);
+  const [defaultModel, setDefaultModel] = useState("llama3.2");
 
   const load = async () => {
-    const [a, k, m] = await Promise.all([
+    const [a, k, m, gw] = await Promise.all([
       api.listAgents(),
       api.listKbs(),
       api.listMcpConnections(),
+      api.getGatewaySettings(),
     ]);
     setAgents(a);
     setKbs(k);
     setMcpConnections(m);
+    setDefaultModel(gw.default_model || gw.platform_default_model || "llama3.2");
   };
 
   useEffect(() => {
@@ -52,7 +55,7 @@ export default function AgentsPage() {
     name: "",
     description: "",
     system_prompt: "You are a helpful assistant.",
-    model: "llama3.2",
+    model: defaultModel,
     temperature: 0.7,
     knowledge_base_ids: [],
     mcp_tools: [],

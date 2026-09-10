@@ -135,3 +135,16 @@ See `.env.example` for all variables. Key settings:
 - `LLM_GATEWAY_URL` — OpenAI-compatible base URL (e.g. Bifrost/Ollama)
 - `EMBED_MODEL=nomic-embed-text` — same gateway for embeddings
 - `QDRANT_URL` — Qdrant HTTP API
+
+### Ollama Cloud
+
+Set platform defaults in `.env` or configure per-org under **Settings** in the web UI:
+
+```bash
+LLM_GATEWAY_URL=https://ollama.com/v1
+OLLAMA_API_KEY=your-key-from-ollama.com/settings/keys
+LLM_DEFAULT_MODEL=gpt-oss:120b
+```
+
+Use plain cloud model names (`gpt-oss:120b`), not the local offload suffix (`gpt-oss:120b-cloud`).
+Test with `POST /v1/settings/llm-gateway/test` or the **Test connection** button in Settings.

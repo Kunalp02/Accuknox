@@ -8,7 +8,9 @@ from orchestrator_llm.client import (
     chat_completion,
     create_openai_client,
     is_cloud_gateway,
+    list_gateway_models,
     normalize_gateway_base_url,
+    normalize_model_for_gateway,
 )
 from orchestrator_llm.gateway import (
     delete_gateway_config,
@@ -119,6 +121,38 @@ async def clear_llm_gateway_settings(
     await session.commit()
 
 
+@router.get("/llm-gateway/models")
+async def list_llm_gateway_models(
+    auth: AuthContext = Depends(get_auth_context),
+    session: AsyncSession = Depends(get_session),
+):
+    _check(auth, "org:read")
+    gateway = await get_gateway_for_org(session, auth.org_id)
+    base_url = normalize_gateway_base_url(gateway.base_url)
+
+    if is_cloud_gateway(base_url) and not gateway.api_key:
+        raise HTTPException(
+            status_code=400,
+            detail="API key required to list models from cloud gateways. "
+            "Save your Ollama Cloud key under Settings first.",
+        )
+
+    if settings.llm_mock_mode:
+        return {
+            "models": [gateway.default_model, gateway.embed_model],
+            "mock_mode": True,
+        }
+
+    try:
+        models = await list_gateway_models(gateway)
+        return {"models": models, "base_url": base_url}
+    except Exception as e:
+        raise HTTPException(
+            status_code=502,
+            detail=f"Failed to list models from gateway: {e}",
+        )
+
+
 @router.post("/llm-gateway/test")
 async def test_llm_gateway(
     auth: AuthContext = Depends(get_auth_context),
@@ -151,17 +185,18 @@ async def test_llm_gateway(
             "mock_mode": True,
         }
 
+    model = normalize_model_for_gateway(gateway.default_model, base_url)
     client = create_openai_client(gateway)
     try:
         preview, _ = await chat_completion(
             client,
-            gateway.default_model,
+            model,
             [{"role": "user", "content": "ping"}],
         )
         return {
             "ok": True,
             "base_url": base_url,
-            "default_model": gateway.default_model,
+            "default_model": model,
             "response_preview": preview.strip(),
             "verify_ssl": settings.llm_gateway_verify_ssl,
             "trust_env": settings.llm_gateway_trust_env,

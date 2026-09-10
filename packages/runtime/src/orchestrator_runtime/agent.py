@@ -8,6 +8,7 @@ from orchestrator_llm.client import (
     chat_completion,
     create_openai_client,
     embed_texts,
+    normalize_model_for_gateway,
 )
 from orchestrator_mcp.client import McpHttpClient
 from orchestrator_rag.qdrant import QdrantStore
@@ -65,7 +66,7 @@ async def _run_mcp_tool_loop(
 
     for _ in range(max_rounds):
         response = await client.chat.completions.create(
-            model=model,
+            model=normalize_model_for_gateway(model, str(client.base_url)),
             messages=messages,
             temperature=temperature,
             tools=openai_tools if openai_tools else None,
