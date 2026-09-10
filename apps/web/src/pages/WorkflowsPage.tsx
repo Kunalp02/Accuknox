@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import ReactFlow, {
   Background,
   Controls,
@@ -12,6 +13,7 @@ import ReactFlow, {
 import "reactflow/dist/style.css";
 import { Plus, Trash2 } from "lucide-react";
 import { api, Agent, McpConnection, Workflow, streamRunEvents } from "../api";
+import { ApiProductPanel } from "../components/ApiProductPanel";
 import { NodeConfigPanel, nodeLabel, WorkflowNodeData } from "../components/WorkflowNodePanel";
 import { PageHeader } from "../components/ui/page-header";
 import { Card, CardHeader } from "../components/ui/card";
@@ -74,6 +76,7 @@ function flowToGraph(nodes: Node[], edges: Edge[], entry: string): Workflow["gra
 }
 
 export default function WorkflowsPage() {
+  const navigate = useNavigate();
   const [workflows, setWorkflows] = useState<Workflow[]>([]);
   const [agents, setAgents] = useState<Agent[]>([]);
   const [mcpConnections, setMcpConnections] = useState<McpConnection[]>([]);
@@ -359,6 +362,13 @@ export default function WorkflowsPage() {
                   <Trash2 className="h-4 w-4" />
                 </Button>
               </div>
+
+              <ApiProductPanel
+                resourceType="workflow"
+                resourceId={selected.id}
+                isPublished={selected.is_published}
+                onCreateApiKey={(id) => navigate(`/api-keys?resources=${id}`)}
+              />
 
               <Field label="Entry node">
                 <Select value={entry} onChange={(e) => setEntry(e.target.value)}>

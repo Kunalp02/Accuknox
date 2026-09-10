@@ -191,6 +191,11 @@ async def resume_run(
         raise HTTPException(status_code=404, detail="Run not found")
     if run.status != "awaiting_input":
         raise HTTPException(status_code=400, detail="Run is not awaiting input")
+    if auth.is_api_key:
+        if run.agent_id:
+            check_resource_scope(auth, run.agent_id)
+        elif run.workflow_id:
+            check_resource_scope(auth, run.workflow_id)
 
     run.input = {**run.input, "human_response": body.input}
     run.status = "pending"
@@ -212,6 +217,11 @@ async def get_run(
     run = result.scalar_one_or_none()
     if not run:
         raise HTTPException(status_code=404, detail="Run not found")
+    if auth.is_api_key:
+        if run.agent_id:
+            check_resource_scope(auth, run.agent_id)
+        elif run.workflow_id:
+            check_resource_scope(auth, run.workflow_id)
     return _run_response(run)
 
 
@@ -246,6 +256,11 @@ async def stream_run_events(
     run = result.scalar_one_or_none()
     if not run:
         raise HTTPException(status_code=404, detail="Run not found")
+    if auth.is_api_key:
+        if run.agent_id:
+            check_resource_scope(auth, run.agent_id)
+        elif run.workflow_id:
+            check_resource_scope(auth, run.workflow_id)
 
     async def event_generator():
         pubsub, client = await EventPublisher().subscribe(run_id)

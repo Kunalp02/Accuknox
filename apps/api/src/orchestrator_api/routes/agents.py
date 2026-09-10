@@ -1,8 +1,9 @@
 import uuid
 from datetime import UTC, datetime
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
 from orchestrator_api.deps import AuthContext, get_auth_context
+from orchestrator_api.integration import IntegrationGuideResponse, build_agent_integration
 from orchestrator_core.database import get_session
 from orchestrator_core.models import Agent
 from orchestrator_core.rbac import has_permission
@@ -118,6 +119,26 @@ async def create_agent(
     await session.commit()
     await session.refresh(agent)
     return _agent_to_response(agent)
+
+
+@router.get("/{agent_id}/integration", response_model=IntegrationGuideResponse)
+async def get_agent_integration(
+    agent_id: uuid.UUID,
+    request: Request,
+    auth: AuthContext = Depends(get_auth_context),
+    session: AsyncSession = Depends(get_session),
+):
+    _check_permission(auth, "agent:read")
+    result = await session.execute(
+        select(Agent).where(Agent.id == agent_id, Agent.organization_id == auth.org_id)
+    )
+    agent = result.scalar_one_or_none()
+    if not agent:
+        raise HTTPException(status_code=404, detail="Agent not found")
+    base_url = str(request.base_url).rstrip("/")
+    return build_agent_integration(
+        base_url, str(agent.id), agent.name, agent.version, agent.is_published
+    )
 
 
 @router.get("/{agent_id}", response_model=AgentResponse)

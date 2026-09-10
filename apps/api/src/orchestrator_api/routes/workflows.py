@@ -1,8 +1,9 @@
 import uuid
 from datetime import UTC, datetime
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
 from orchestrator_api.deps import AuthContext, get_auth_context
+from orchestrator_api.integration import IntegrationGuideResponse, build_workflow_integration
 from orchestrator_core.database import get_session
 from orchestrator_core.models import Workflow
 from orchestrator_core.rbac import has_permission
@@ -134,6 +135,26 @@ async def create_workflow(
     await session.commit()
     await session.refresh(wf)
     return _to_response(wf)
+
+
+@router.get("/{workflow_id}/integration", response_model=IntegrationGuideResponse)
+async def get_workflow_integration(
+    workflow_id: uuid.UUID,
+    request: Request,
+    auth: AuthContext = Depends(get_auth_context),
+    session: AsyncSession = Depends(get_session),
+):
+    _check(auth, "workflow:read")
+    result = await session.execute(
+        select(Workflow).where(Workflow.id == workflow_id, Workflow.organization_id == auth.org_id)
+    )
+    wf = result.scalar_one_or_none()
+    if not wf:
+        raise HTTPException(status_code=404, detail="Workflow not found")
+    base_url = str(request.base_url).rstrip("/")
+    return build_workflow_integration(
+        base_url, str(wf.id), wf.name, wf.version, wf.is_published
+    )
 
 
 @router.get("/{workflow_id}", response_model=WorkflowResponse)

@@ -119,6 +119,17 @@ Add `LLM_GATEWAY_URL` (and optional `LLM_GATEWAY_KEY`) as environment secrets fo
 | `CRUD /v1/knowledge-bases` | Knowledge bases |
 | `POST /v1/api-keys` | Create scoped API keys |
 
+### API-as-a-product
+
+Publish an agent or workflow, create a scoped API key, and share the integration guide:
+
+| Step | Action |
+|------|--------|
+| 1 | **Publish** agent/workflow in the UI |
+| 2 | Open **API product** panel → copy curl examples, or `GET /v1/agents/{id}/integration` |
+| 3 | Create API key under **API keys** (scope to specific resources optional) |
+| 4 | Consumer invokes → polls `GET /v1/runs/{run_id}` or streams `GET /v1/runs/{run_id}/events` |
+
 ### External invoke example
 
 ```bash
@@ -126,6 +137,12 @@ curl -X POST http://localhost:8000/v1/agents/{agent_id}/invoke \
   -H "X-API-Key: oak_..." \
   -H "Content-Type: application/json" \
   -d '{"input": "Hello"}'
+```
+
+Poll for result:
+
+```bash
+curl http://localhost:8000/v1/runs/{run_id} -H "X-API-Key: oak_..."
 ```
 
 ## Environment

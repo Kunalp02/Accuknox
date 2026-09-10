@@ -60,6 +60,8 @@ export const api = {
   deleteAgent: (id: string) => request<void>(`/v1/agents/${id}`, { method: "DELETE" }),
   publishAgent: (id: string) =>
     request<Agent>(`/v1/agents/${id}/publish`, { method: "POST" }),
+  getAgentIntegration: (id: string) =>
+    request<IntegrationGuide>(`/v1/agents/${id}/integration`),
   invokeAgent: (id: string, options: InvokeOptions | string) =>
     request<{ run_id: string; status: string }>(`/v1/agents/${id}/invoke`, {
       method: "POST",
@@ -113,6 +115,8 @@ export const api = {
   deleteWorkflow: (id: string) => request<void>(`/v1/workflows/${id}`, { method: "DELETE" }),
   publishWorkflow: (id: string) =>
     request<Workflow>(`/v1/workflows/${id}/publish`, { method: "POST" }),
+  getWorkflowIntegration: (id: string) =>
+    request<IntegrationGuide>(`/v1/workflows/${id}/integration`),
   validateWorkflow: (id: string) =>
     request<{ valid: boolean; errors: string[]; warnings: string[] }>(
       `/v1/workflows/${id}/validate`,
@@ -197,6 +201,24 @@ export interface Run {
   error?: string;
   metrics: Record<string, number>;
   trace?: Array<{ ts?: string; type: string; data: Record<string, unknown> }>;
+}
+
+export interface IntegrationGuide {
+  resource_type: string;
+  resource_id: string;
+  name: string;
+  version: number;
+  is_published: boolean;
+  base_url: string;
+  invoke: { method: string; path: string; description: string };
+  poll_run: { method: string; path: string; description: string };
+  stream_events: { method: string; path: string; description: string };
+  resume?: { method: string; path: string; description: string };
+  required_scopes: string[];
+  auth_headers: string[];
+  request_body: Record<string, string>;
+  webhook_events: string[];
+  examples: Record<string, string>;
 }
 
 export interface GatewaySettings {

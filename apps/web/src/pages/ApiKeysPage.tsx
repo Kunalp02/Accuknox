@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import { api, Agent, ApiKey, Workflow, UsageDay } from "../api";
 import { PageHeader } from "../components/ui/page-header";
 import { Card, CardHeader } from "../components/ui/card";
@@ -8,6 +9,7 @@ import { Field } from "../components/ui/label";
 import { Input } from "../components/ui/input";
 
 export default function ApiKeysPage() {
+  const [searchParams] = useSearchParams();
   const [keys, setKeys] = useState<ApiKey[]>([]);
   const [agents, setAgents] = useState<Agent[]>([]);
   const [workflows, setWorkflows] = useState<Workflow[]>([]);
@@ -34,6 +36,13 @@ export default function ApiKeysPage() {
     load();
   }, []);
 
+  useEffect(() => {
+    const preselect = searchParams.get("resources");
+    if (preselect) {
+      setResourceIds(preselect.split(",").filter(Boolean));
+    }
+  }, [searchParams]);
+
   const create = async () => {
     const key = await api.createApiKey({
       name: name || "Default",
@@ -54,7 +63,23 @@ export default function ApiKeysPage() {
 
   return (
     <div>
-      <PageHeader title="API keys & usage" description="Manage API access and monitor consumption." />
+      <PageHeader
+        title="API keys & usage"
+        description="Expose published agents and workflows as async HTTP APIs for external consumers."
+      />
+
+      <Card className="mb-5">
+        <CardHeader
+          title="API-as-a-product flow"
+          description="How external apps integrate with your published resources."
+        />
+        <ol className="list-decimal pl-5 text-sm text-gray-700 space-y-2">
+          <li>Build and <strong>publish</strong> an agent or workflow.</li>
+          <li>Create a scoped API key below (optionally limit to specific resources).</li>
+          <li>Share the invoke URL + key — consumers POST input, poll or stream the run.</li>
+          <li>Optional: pass <code className="bg-gray-100 px-1 rounded text-xs">webhook_url</code> for push notifications on completion.</li>
+        </ol>
+      </Card>
 
       <div className="grid gap-5 lg:grid-cols-2">
         <Card>

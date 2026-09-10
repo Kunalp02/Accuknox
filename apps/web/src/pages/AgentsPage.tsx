@@ -1,6 +1,8 @@
 import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { Plus, Send, Trash2 } from "lucide-react";
 import { api, Agent, McpConnection, streamRunEvents, KnowledgeBase } from "../api";
+import { ApiProductPanel } from "../components/ApiProductPanel";
 import { PageHeader } from "../components/ui/page-header";
 import { Card, CardHeader } from "../components/ui/card";
 import { Button } from "../components/ui/button";
@@ -13,6 +15,7 @@ import { cn } from "../lib/cn";
 type McpToolEntry = { connection_id: string; tools: string[] };
 
 export default function AgentsPage() {
+  const navigate = useNavigate();
   const [agents, setAgents] = useState<Agent[]>([]);
   const [kbs, setKbs] = useState<KnowledgeBase[]>([]);
   const [mcpConnections, setMcpConnections] = useState<McpConnection[]>([]);
@@ -168,8 +171,6 @@ export default function AgentsPage() {
     }
   };
 
-  const apiEndpoint = selected ? `${window.location.origin}/v1/agents/${selected.id}/invoke` : "";
-
   return (
     <div>
       <PageHeader
@@ -308,21 +309,12 @@ export default function AgentsPage() {
         <Card>
           {selected ? (
             <div className="space-y-4">
-              {selected.is_published && (
-                <div className="rounded-lg bg-gray-50 p-4 space-y-2">
-                  <h4 className="text-sm font-semibold text-gray-900">API endpoint</h4>
-                  <p className="font-mono text-xs text-gray-600">POST {apiEndpoint}</p>
-                  <p className="text-xs text-gray-500">
-                    Returns 202 with run_id. Use X-API-Key or Bearer auth.
-                  </p>
-                  <pre className="font-mono text-[11px] text-gray-500 overflow-x-auto">
-{`curl -X POST ${apiEndpoint} \\
-  -H "X-API-Key: oak_..." \\
-  -H "Content-Type: application/json" \\
-  -d '{"input":"Hello"}'`}
-                  </pre>
-                </div>
-              )}
+              <ApiProductPanel
+                resourceType="agent"
+                resourceId={selected.id}
+                isPublished={selected.is_published}
+                onCreateApiKey={(id) => navigate(`/api-keys?resources=${id}`)}
+              />
 
               <CardHeader title="Test invoke" description="Async — response streams via SSE" />
               <Textarea
